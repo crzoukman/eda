@@ -123,6 +123,7 @@ const TaskModal: FC<IProps> = ({ handleClose, open, updateState }) => {
           <LoadingButton
             variant="contained"
             onClick={addTaskHandler}
+            sx={{ mb: 2 }}
           >
             Add
           </LoadingButton>
