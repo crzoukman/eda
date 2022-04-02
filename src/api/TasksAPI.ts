@@ -4,7 +4,7 @@ import axios from "axios";
 export class TasksAPI {
   static async addTask(data: any) {
     try {
-      const res = await axios.post(BASE_URL + '/tasks', data);
+      const res = await axios.post(BASE_URL + '/api/tasks', data);
       return res;
     } catch (e) {
       if (e instanceof Error) {
@@ -15,7 +15,7 @@ export class TasksAPI {
 
   static async getTasks(id: string) {
     try {
-      const res = await axios.get(BASE_URL + '/tasks', {
+      const res = await axios.get(BASE_URL + '/api/tasks', {
         params: {
           id,
         }
@@ -30,7 +30,7 @@ export class TasksAPI {
 
   static async deleteTask(id: string) {
     try {
-      const res = await axios.delete(BASE_URL + '/tasks' + '/' + id);
+      const res = await axios.delete(BASE_URL + '/api/tasks' + '/' + id);
       return res;
     } catch (e) {
       if (e instanceof Error) {
@@ -41,7 +41,7 @@ export class TasksAPI {
 
   static async editTask(task: any) {
     try {
-      const res = await axios.put(BASE_URL + '/tasks', task);
+      const res = await axios.put(BASE_URL + '/api/tasks', task);
       return res;
     } catch (e) {
       if (e instanceof Error) {

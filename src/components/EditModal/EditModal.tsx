@@ -125,7 +125,7 @@ const EditModal: FC<any> = (props) => {
             Submit
           </LoadingButton>
         </LocalizationProvider>
-        <div>
+        <div style={{ marginTop: '20px' }}>
           {error && <Alert severity="error">Error: Couldn't edit the task!</Alert>}
           {error === false && <Alert severity="success">Success: The task has been edited!</Alert>}
         </div>
