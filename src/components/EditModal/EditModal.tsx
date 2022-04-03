@@ -4,6 +4,8 @@ import { TasksAPI } from "api/TasksAPI";
 import React, { FC, useState } from "react";
 import AdapterDateFns from '@mui/lab/AdapterDateFns';
 import { style, typesConfig } from "./config";
+import { getCookie } from "utils/getCookie";
+import { useNavigate } from "react-router-dom";
 
 const today = new Date();
 
@@ -13,6 +15,7 @@ const EditModal: FC<any> = (props) => {
   const [plannedStart, setPlannedStart] = React.useState<Date | null>(new Date(props.plannedStart));
   const [plannedEnd, setPlannedEnd] = React.useState<Date | null>(new Date(props.plannedEnd));
   const [type, setType] = useState<string>(props.type);
+  const navigate = useNavigate();
 
   const handlePlannedStart = (newValue: Date | null) => {
     setPlannedStart(newValue);
@@ -34,22 +37,57 @@ const EditModal: FC<any> = (props) => {
       }, 3000);
     }
 
+    const userData = JSON.parse(localStorage.getItem('userData') as string);
+    const token = getCookie('accessToken' + userData._id);
+
     if (task.length) {
-      const res = await TasksAPI.editTask({
-        _id: props._id,
-        name: task,
-        date,
-        type,
-        plannedStart,
-        plannedEnd,
-        completed: false,
-        started: false,
-      });
+      const res = await TasksAPI.editTask(
+        {
+          _id: props._id,
+          name: task,
+          date,
+          type,
+          plannedStart,
+          plannedEnd,
+          completed: false,
+          started: false,
+        },
+        token
+      );
 
       if (res?.status === 200) {
         setError(false);
       } else {
-        setError(true);
+        if (res?.status === 403) {
+          const token = getCookie('accessToken' + userData._id);
+          try {
+            await TasksAPI.editTask(
+              {
+                _id: props._id,
+                name: task,
+                date,
+                type,
+                plannedStart,
+                plannedEnd,
+                completed: false,
+                started: false,
+              },
+              token
+            );
+            setError(false);
+
+          } catch (e: any) {
+            console.log(e.message);
+
+            setError(true);
+
+            setTimeout(() => {
+              setError(null);
+              navigate('/login');
+            }, 3000);
+          }
+        }
+
       }
 
       setTimeout(() => {
@@ -125,7 +163,7 @@ const EditModal: FC<any> = (props) => {
             Submit
           </LoadingButton>
         </LocalizationProvider>
-        <div>
+        <div style={{ marginTop: '20px' }}>
           {error && <Alert severity="error">Error: Couldn't edit the task!</Alert>}
           {error === false && <Alert severity="success">Success: The task has been edited!</Alert>}
         </div>

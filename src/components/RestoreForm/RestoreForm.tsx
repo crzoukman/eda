@@ -90,12 +90,14 @@ const ProfileForm: FC<IProps> = ({ setQuestion, question }) => {
         </RestoreFormWrapperStyled>
       )}
 
-      {error && (
-        <Alert severity="error">Answers don't match!</Alert>
-      )}
-      {error === false && (
-        <Alert severity="success">Password had been restored!</Alert>
-      )}
+      <div style={{ marginTop: '20px' }}>
+        {error && (
+          <Alert severity="error">Answers don't match!</Alert>
+        )}
+        {error === false && (
+          <Alert severity="success">Password had been restored!</Alert>
+        )}
+      </div>
 
     </div>
   );

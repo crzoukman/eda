@@ -9,8 +9,10 @@ import { createContext, FC, useEffect, useState } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { IAppContext } from 'types';
 import { MainWrapperStyled } from './App.styled';
+require('./middleware/axios');
 
 export const AppContext = createContext<IAppContext | null>(null);
+
 
 const App: FC = () => {
   const [isAuth, setIsAuth] = useState(false);
@@ -21,6 +23,7 @@ const App: FC = () => {
       setIsAuth(true);
     }
   }, []);
+
 
   return (
     <AppContext.Provider value={{

@@ -24,6 +24,7 @@ export const useFormikCustom = (...args: any) => {
         username,
         email,
         password,
+        changepassword,
       } = values;
 
       setIsCreatingUser(true);
@@ -31,6 +32,7 @@ export const useFormikCustom = (...args: any) => {
       const res = await Api.createUser({
         username,
         password,
+        passwordConfirmation: changepassword,
         email,
       });
 

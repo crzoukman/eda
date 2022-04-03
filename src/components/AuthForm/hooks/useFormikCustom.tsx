@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { IAppContext } from "types";
 import { validationSchema } from "../utils/validationSchema";
 import { AppContext } from 'App';
+import { omit } from "../utils/omit";
 
 export const useFormikCustom = (...args: any) => {
   const setIsSigningIn = args[0];
@@ -25,22 +26,29 @@ export const useFormikCustom = (...args: any) => {
 
       setIsSigningIn(true);
 
-      const res = await Api.login({
-        username,
-        password,
-      });
+      try {
+        const res = await Api.login({
+          username,
+          password,
+        });
+
+        document.cookie = `refreshToken${res.data._id}=${res.data.refreshToken}`;
+        document.cookie = `accessToken${res.data._id}=${res.data.accessToken}`;
+
+        const omitted = omit(res.data, ['refreshToken', 'accessToken']);
+
+        localStorage.setItem(
+          'userData',
+          JSON.stringify({ ...omitted })
+        );
+
+        setIsAuth(true);
+        navigate('/');
+      } catch (e) {
+        console.log(e);
+      }
 
       setIsSigningIn(false);
-
-      if (res?.data) {
-        const { token, _id, firstname, lastname, question, answer, patronymic } = res.data;
-
-        if (res.status === 200) {
-          localStorage.setItem('userData', JSON.stringify({ username, token, _id, firstname, lastname, question, answer, patronymic }));
-          setIsAuth(true);
-          navigate('/');
-        }
-      }
 
     },
   });

@@ -5,6 +5,8 @@ import React, { FC, useState } from "react";
 import { IProps } from './types';
 import AdapterDateFns from '@mui/lab/AdapterDateFns';
 import { style, typesConfig } from "./config";
+import { getCookie } from "utils/getCookie";
+import { useNavigate } from "react-router-dom";
 
 const today = new Date();
 
@@ -14,6 +16,7 @@ const TaskModal: FC<IProps> = ({ handleClose, open, updateState }) => {
   const [plannedStart, setPlannedStart] = React.useState<Date | null>(today);
   const [plannedEnd, setPlannedEnd] = React.useState<Date | null>(today);
   const [type, setType] = useState<string>('Type 1');
+  const navigate = useNavigate();
 
   const handlePlannedStart = (newValue: Date | null) => {
     setPlannedStart(newValue);
@@ -36,6 +39,9 @@ const TaskModal: FC<IProps> = ({ handleClose, open, updateState }) => {
       }, 3000);
     }
 
+    const userData = JSON.parse(localStorage.getItem('userData') as string);
+    const token = getCookie('accessToken' + userData._id);
+
     if (task.length) {
       const res = await TasksAPI.addTask({
         userId: id,
@@ -46,12 +52,43 @@ const TaskModal: FC<IProps> = ({ handleClose, open, updateState }) => {
         plannedEnd,
         completed: false,
         started: false,
-      });
+      },
+        token
+      );
 
       if (res?.status === 200) {
         setError(false);
       } else {
-        setError(true);
+        if (res?.status === 403) {
+          const token = getCookie('accessToken' + userData._id);
+          try {
+            await TasksAPI.addTask({
+              userId: id,
+              name: task,
+              date,
+              type,
+              plannedStart,
+              plannedEnd,
+              completed: false,
+              started: false,
+            },
+              token
+            );
+
+            setError(false);
+
+          } catch (e: any) {
+            console.log(e.message);
+
+            setError(true);
+
+            setTimeout(() => {
+              setError(null);
+              navigate('/login');
+            }, 3000);
+          }
+        }
+
       }
 
       setTimeout(() => {

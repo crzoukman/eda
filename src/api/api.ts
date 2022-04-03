@@ -14,13 +14,15 @@ export class Api {
       username,
       password,
       email,
+      passwordConfirmation,
     } = data;
 
     try {
-      const res = await axios.post(BASE_URL + '/reg', {
+      const res = await axios.post(BASE_URL + '/api/create', {
         username,
         password,
         email,
+        passwordConfirmation,
       });
 
       return res;
@@ -31,46 +33,29 @@ export class Api {
     }
   }
 
-  static async login(data: ILogin) {
+  static login(data: ILogin) {
     const {
       username,
       password,
     } = data;
 
-    try {
-      const res = await axios.post(BASE_URL + '/login', {
-        username,
-        password,
-      });
-
-      return res;
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error(e.message);
-      }
-    }
+    return axios.post(BASE_URL + '/api/session', {
+      username,
+      password,
+    });
   }
 
-  static async updateProfile(user: any) {
-    try {
-      const res = await axios.post(BASE_URL + '/profile', user, {
-        headers: {
-          'Authorization': `Bearer ${user.token}`
-        }
-      });
-
-      return res;
-    } catch (e: any) {
-      if (e instanceof Error) {
-        console.error('updateProfile() error');
+  static updateProfile(user: any, token: string) {
+    return axios.post(BASE_URL + '/api/update', user, {
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
-      if (e.response.status == 403) return 403;
-    }
+    });
   }
 
   static async getRestoreData(data: IGetRestoreData) {
     try {
-      const res = await axios.post(BASE_URL + '/restore', { ...data });
+      const res = await axios.post(BASE_URL + '/api/restore', { ...data });
 
       if (res.data !== null) return true;
       return false;
@@ -83,7 +68,7 @@ export class Api {
 
   static async getQuestion(username: string) {
     try {
-      const res = await axios.get(BASE_URL + '/restore', {
+      const res = await axios.get(BASE_URL + '/api/restore', {
         params: { username }
       });
       return res;
@@ -92,5 +77,13 @@ export class Api {
         console.error('getQuestion() error');
       }
     }
+  }
+
+  static refreshToken(token: string) {
+    return axios.post(BASE_URL + '/api/refresh', null, {
+      headers: {
+        'x-refresh': token
+      }
+    });
   }
 }

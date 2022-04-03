@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { validationSchema } from "../utils/validationSchema";
 import { AppContext } from 'App';
 import { IAppContext } from "types";
+import { getCookie } from "utils/getCookie";
 
 export const useFormikCustom = (...args: any) => {
   const setIsSending = args[0];
@@ -33,17 +34,22 @@ export const useFormikCustom = (...args: any) => {
         answer,
       } = values;
 
-      try {
-        const res = await Api.updateProfile({
-          ...userData,
-          firstname,
-          lastname,
-          patronymic,
-          question,
-          answer,
-        });
+      async function updateProfile() {
+        const token = getCookie('accessToken' + userData._id);
 
-        if (res && res !== 403) {
+        try {
+          await Api.updateProfile(
+            {
+              ...userData,
+              firstname,
+              lastname,
+              patronymic,
+              question,
+              answer,
+            },
+            token
+          );
+
           localStorage.setItem('userData', JSON.stringify({
             ...userData,
             firstname,
@@ -57,25 +63,45 @@ export const useFormikCustom = (...args: any) => {
 
           setTimeout(() => {
             setShowSuccess(false);
+            navigate('/');
           }, 3000);
-        } else {
-          setShowError(true);
-          setTimeout(() => {
-            setShowError(false);
-            if (res === 403) {
-              setIsAuth(false);
-              localStorage.removeItem('userData');
-              navigate('/');
+
+        } catch (e: any) {
+          if (!e.response) {
+            setShowError(true);
+
+            setTimeout(() => {
+              setShowError(false);
+            }, 3000);
+
+          } else {
+            const status = e.response.status;
+            if (status === 403) {
+              const token = getCookie('refreshToken' + userData._id);
+
+              try {
+                const res = await Api.refreshToken(token);
+
+                if (res.data.accessToken) {
+                  document.cookie = `accessToken${userData._id}=${res.data.accessToken}`;
+                  updateProfile();
+                }
+              } catch (e: any) {
+                const status = e.response.status;
+                if (status === 401) {
+                  setIsAuth(false);
+                  localStorage.removeItem('userData');
+                  navigate('/auth');
+                }
+              }
+            } else {
+              console.log('status is not 403');
             }
-          }, 3000);
-        }
-      } catch (e) {
-        if (e instanceof Error) {
-          console.log(e.message);
+          }
         }
       }
 
-
+      updateProfile();
     },
   });
 
