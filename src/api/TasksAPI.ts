@@ -2,9 +2,13 @@ import { BASE_URL } from "./baseURL";
 import axios from "axios";
 
 export class TasksAPI {
-  static async addTask(data: any) {
+  static async addTask(data: any, token: string) {
     try {
-      const res = await axios.post(BASE_URL + '/api/tasks', data);
+      const res = await axios.post(BASE_URL + '/api/tasks', data, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       return res;
     } catch (e) {
       if (e instanceof Error) {
@@ -28,9 +32,13 @@ export class TasksAPI {
     }
   }
 
-  static async deleteTask(id: string) {
+  static async deleteTask(id: string, token: string) {
     try {
-      const res = await axios.delete(BASE_URL + '/api/tasks' + '/' + id);
+      const res = await axios.delete(BASE_URL + '/api/tasks' + '/' + id, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       return res;
     } catch (e) {
       if (e instanceof Error) {
@@ -39,14 +47,22 @@ export class TasksAPI {
     }
   }
 
-  static async editTask(task: any) {
+  static async editTask(task: any, token: string) {
     try {
-      const res = await axios.put(BASE_URL + '/api/tasks', task);
+      const res = await axios.put(BASE_URL + '/api/tasks', task, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
       return res;
-    } catch (e) {
-      if (e instanceof Error) {
-        console.log(e.message);
+    } catch (e: any) {
+      if (e.response.status === 403) {
+
       }
+
+      console.log(e.message);
+
     }
   }
 }
