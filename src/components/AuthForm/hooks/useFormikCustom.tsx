@@ -1,16 +1,30 @@
-import Api from "api";
-import { useFormik } from "formik";
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { IAppContext } from "types";
-import { validationSchema } from "../utils/validationSchema";
+import Api from 'api';
+import { useFormik } from 'formik';
+import React, { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { IAppContext } from 'types';
+import { validationSchema } from '../utils/validationSchema';
 import { AppContext } from 'App';
-import { omit } from "../utils/omit";
+import jwt_decode from 'jwt-decode';
+import { saveTokenToCookie } from 'utils/saveTokenToCookie';
+import { config } from 'config';
 
 export const useFormikCustom = (...args: any) => {
   const setIsSigningIn = args[0];
-  const { setIsAuth } = React.useContext(AppContext) as IAppContext;
+  const setError = args[1];
+  const { setIsAuth } = React.useContext(
+    AppContext,
+  ) as IAppContext;
   const navigate = useNavigate();
+  const timeoutId = useRef<null | NodeJS.Timeout>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutId.current) {
+        clearTimeout(timeoutId.current);
+      }
+    };
+  }, []);
 
   const formik = useFormik({
     initialValues: {
@@ -19,39 +33,64 @@ export const useFormikCustom = (...args: any) => {
     },
     validationSchema: validationSchema,
     onSubmit: async (values) => {
-      const {
-        username,
-        password,
-      } = values;
+      const { username, password } = values;
 
       setIsSigningIn(true);
 
-      try {
-        const res = await Api.login({
-          username,
-          password,
-        });
+      const res = await Api.login({
+        username,
+        password,
+      });
 
-        document.cookie = `refreshToken${res.data._id}=${res.data.refreshToken}`;
-        document.cookie = `accessToken${res.data._id}=${res.data.accessToken}`;
+      if (res.status === 201) {
+        const { access_token, refresh_token } = res as {
+          access_token: string;
+          refresh_token: string;
+        };
 
-        const omitted = omit(res.data, ['refreshToken', 'accessToken']);
+        const decoded: { email: string; username: string } =
+          jwt_decode(access_token);
+
+        saveTokenToCookie(
+          access_token,
+          decoded.username,
+          'at',
+        );
+        saveTokenToCookie(
+          refresh_token,
+          decoded.username,
+          'rt',
+        );
 
         localStorage.setItem(
           'userData',
-          JSON.stringify({ ...omitted })
+          JSON.stringify({
+            email: decoded.email,
+            username: decoded.username,
+          }),
         );
 
         setIsAuth(true);
         navigate('/');
-      } catch (e) {
-        console.log(e);
+      }
+
+      if (res.status === 401) {
+        setError(401);
+        timeoutId.current = setTimeout(() => {
+          setError(null);
+        }, config.ALERT_DELAY);
+      }
+
+      if (res.status === 500 || res.status === 5000) {
+        setError(500);
+        timeoutId.current = setTimeout(() => {
+          setError(null);
+        }, config.ALERT_DELAY);
       }
 
       setIsSigningIn(false);
-
     },
   });
 
   return formik;
-}; 
+};
