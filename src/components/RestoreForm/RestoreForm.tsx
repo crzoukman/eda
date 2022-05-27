@@ -1,10 +1,18 @@
-import { FC, useState } from 'react';
+import {
+  FC,
+  MutableRefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { Alert, TextField } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
 import { useFormikCustom } from './hooks/useFormikCustom';
 import Api from 'api';
 import { RestoreFormWrapperStyled } from './RestoreForm.styled';
 import { IProps } from './types';
+import { config } from 'config';
+import isEmail from 'validator/lib/isEmail';
 
 const ProfileForm: FC<IProps> = ({
   setQuestion,
@@ -12,23 +20,77 @@ const ProfileForm: FC<IProps> = ({
 }) => {
   const [isSending, setIsSending] = useState(false);
   const [login, setLogin] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState<null | boolean>(null);
-
-  const formik = useFormikCustom(
-    setIsSending,
-    setQuestion,
-    login,
-    setError,
+  const [success, setSuccess] = useState<null | boolean>(
+    null,
+  );
+  const [errorMsg, setErrorMsg] = useState<null | string>(
+    null,
   );
 
-  const getLoginHandler = async () => {
-    setIsSending(true);
-    const res = await Api.getQuestion(login.toLowerCase());
-    setIsSending(false);
-    if (res && res.data !== null) {
-      setQuestion(res.data);
-    } else {
+  const getQuestionTimeout = useRef<null | NodeJS.Timeout>(
+    null,
+  );
+
+  useEffect(() => {
+    return () => {
+      if (getQuestionTimeout.current) {
+        clearTimeout(getQuestionTimeout.current);
+      }
+    };
+  }, []);
+
+  const formik = useFormikCustom({
+    setIsSending,
+    setError,
+    setErrorMsg,
+    setSuccess,
+    login,
+    email,
+  });
+
+  const getQuestionHandler = async () => {
+    if (isEmail(email)) {
+      setIsSending(true);
+      const res = await Api.getQuestion(
+        login.toLowerCase(),
+        email.toLowerCase(),
+      );
+      setIsSending(false);
+
+      if (res.status === 200) {
+        setQuestion(res.data);
+      } else {
+        setError(true);
+
+        if (res.status === 403) {
+          setErrorMsg(
+            'Username and email must belong the same user!',
+          );
+        }
+
+        if (res.status === 404) {
+          setErrorMsg('Username does not exist!');
+        }
+
+        if (res.status == 410) {
+          setErrorMsg('Question or answer missing!');
+        }
+
+        getQuestionTimeout.current = setTimeout(() => {
+          setError(false);
+          setErrorMsg(null);
+        }, config.ALERT_DELAY);
+      }
     }
+  };
+
+  const handleEmail = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const email = e.target.value;
+    setEmail(email);
   };
 
   return (
@@ -72,6 +134,24 @@ const ProfileForm: FC<IProps> = ({
             }
           />
 
+          <TextField
+            fullWidth
+            id="passwordConfirmation"
+            name="passwordConfirmation"
+            label="Password confirmation"
+            type="password"
+            value={formik.values.passwordConfirmation}
+            onChange={formik.handleChange}
+            error={
+              formik.touched.passwordConfirmation &&
+              Boolean(formik.errors.passwordConfirmation)
+            }
+            helperText={
+              formik.touched.passwordConfirmation &&
+              formik.errors.passwordConfirmation
+            }
+          />
+
           <LoadingButton
             color="primary"
             variant="contained"
@@ -96,6 +176,20 @@ const ProfileForm: FC<IProps> = ({
             onChange={(e) => setLogin(e.target.value)}
           />
 
+          <TextField
+            id="outlined-basic"
+            label="Email"
+            variant="outlined"
+            type="email"
+            fullWidth
+            value={email}
+            onChange={handleEmail}
+            error={!isEmail(email)}
+            helperText={
+              !isEmail(email) && 'Enter valid email'
+            }
+          />
+
           <LoadingButton
             color="primary"
             variant="contained"
@@ -103,7 +197,7 @@ const ProfileForm: FC<IProps> = ({
             type="submit"
             loading={isSending}
             disabled={isSending}
-            onClick={getLoginHandler}
+            onClick={getQuestionHandler}
           >
             Send
           </LoadingButton>
@@ -112,11 +206,9 @@ const ProfileForm: FC<IProps> = ({
 
       <div style={{ marginTop: '20px' }}>
         {error && (
-          <Alert severity="error">
-            Answers don't match!
-          </Alert>
+          <Alert severity="error">{errorMsg}</Alert>
         )}
-        {error === false && (
+        {success && (
           <Alert severity="success">
             Password had been restored!
           </Alert>

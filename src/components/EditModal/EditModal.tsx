@@ -1,21 +1,61 @@
-import { DesktopDatePicker, LoadingButton, LocalizationProvider } from "@mui/lab";
-import { Alert, Box, MenuItem, Modal, Stack, TextField } from "@mui/material";
-import { TasksAPI } from "api/TasksAPI";
-import React, { FC, useState } from "react";
+import {
+  DesktopDatePicker,
+  LoadingButton,
+  LocalizationProvider,
+} from '@mui/lab';
+import {
+  Alert,
+  Box,
+  MenuItem,
+  Modal,
+  Stack,
+  TextField,
+} from '@mui/material';
+import { TasksAPI } from 'api/TasksAPI';
+import React, {
+  FC,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import AdapterDateFns from '@mui/lab/AdapterDateFns';
-import { style, typesConfig } from "./config";
-import { getCookie } from "utils/getCookie";
-import { useNavigate } from "react-router-dom";
+import { style, typesConfig } from './config';
+import { getTokenFromCookie } from 'utils/getTokenFromCookie';
+import { getUsernameFromLS } from 'utils/getUsernameFromLS';
+import { config } from 'config';
+import { AppContext } from 'App';
+import { IAppContext } from 'types';
 
 const today = new Date();
 
 const EditModal: FC<any> = (props) => {
   const [task, setTask] = useState(props.name);
   const [error, setError] = useState<null | boolean>(null);
-  const [plannedStart, setPlannedStart] = React.useState<Date | null>(new Date(props.plannedStart));
-  const [plannedEnd, setPlannedEnd] = React.useState<Date | null>(new Date(props.plannedEnd));
+  const [success, setSuccess] = useState<null | boolean>(
+    null,
+  );
+  const [plannedStart, setPlannedStart] =
+    React.useState<Date | null>(
+      new Date(props.plannedStart),
+    );
+  const [plannedEnd, setPlannedEnd] =
+    React.useState<Date | null>(new Date(props.plannedEnd));
   const [type, setType] = useState<string>(props.type);
-  const navigate = useNavigate();
+
+  const { logout } = useContext(AppContext) as IAppContext;
+
+  const timeError = useRef<boolean>(false);
+  const timeoutId = useRef<null | NodeJS.Timeout>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutId.current) {
+        clearTimeout(timeoutId.current);
+        timeoutId.current = null;
+      }
+    };
+  }, []);
 
   const handlePlannedStart = (newValue: Date | null) => {
     setPlannedStart(newValue);
@@ -28,76 +68,53 @@ const EditModal: FC<any> = (props) => {
   const typeHandler = (type: string) => setType(type);
 
   const editTaskHandler = async () => {
-    const date = new Date();
+    const added = new Date();
 
-    if (plannedStart && plannedEnd && plannedEnd.getTime() < plannedStart.getTime()) {
+    if (
+      plannedStart &&
+      plannedEnd &&
+      plannedEnd.getTime() < plannedStart.getTime()
+    ) {
       setError(true);
-      setTimeout(() => {
+      timeError.current = true;
+
+      timeoutId.current = setTimeout(() => {
         setError(null);
-      }, 3000);
+        timeError.current = false;
+      }, config.ALERT_DELAY);
     }
 
-    const userData = JSON.parse(localStorage.getItem('userData') as string);
-    const token = getCookie('accessToken' + userData._id);
+    const username = getUsernameFromLS();
+    const token = getTokenFromCookie(username, 'at');
 
-    if (task.length) {
+    if (task.length && !timeError.current) {
       const res = await TasksAPI.editTask(
         {
-          _id: props._id,
+          id: props.id,
           name: task,
-          date,
+          added,
           type,
           plannedStart,
           plannedEnd,
-          completed: false,
-          started: false,
         },
-        token
+        token,
       );
 
-      if (res?.status === 200) {
-        setError(false);
+      if (res.status === 200) {
+        setSuccess(true);
+
+        timeoutId.current = setTimeout(() => {
+          setSuccess(false);
+        }, config.ALERT_DELAY);
       } else {
-        if (res?.status === 403) {
-          const token = getCookie('accessToken' + userData._id);
-          try {
-            await TasksAPI.editTask(
-              {
-                _id: props._id,
-                name: task,
-                date,
-                type,
-                plannedStart,
-                plannedEnd,
-                completed: false,
-                started: false,
-              },
-              token
-            );
-            setError(false);
-
-          } catch (e: any) {
-            console.log(e.message);
-
-            setError(true);
-
-            setTimeout(() => {
-              setError(null);
-              navigate('/login');
-            }, 3000);
-          }
+        if (res.status === 403) {
+          logout();
         }
-
       }
-
-      setTimeout(() => {
-        setError(null);
-      }, 3000);
     }
 
     props.updateState({});
   };
-
 
   const taskHandler = (name: string) => {
     setTask(name);
@@ -115,7 +132,9 @@ const EditModal: FC<any> = (props) => {
           fullWidth
           label="Task Name"
           id="fullWidth"
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => taskHandler(e.target.value)}
+          onChange={(
+            e: React.ChangeEvent<HTMLInputElement>,
+          ) => taskHandler(e.target.value)}
           value={task}
           required
           sx={{ mb: 2 }}
@@ -126,14 +145,21 @@ const EditModal: FC<any> = (props) => {
           select
           label="Types"
           value={type}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => typeHandler(e.target.value)}
+          onChange={(
+            e: React.ChangeEvent<HTMLInputElement>,
+          ) => typeHandler(e.target.value)}
           sx={{ mb: 2 }}
         >
-          {typesConfig.map((option: { value: string, label: string }) => (
-            <MenuItem key={option.value} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
+          {typesConfig.map(
+            (option: { value: string; label: string }) => (
+              <MenuItem
+                key={option.value}
+                value={option.value}
+              >
+                {option.label}
+              </MenuItem>
+            ),
+          )}
         </TextField>
 
         <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -142,19 +168,26 @@ const EditModal: FC<any> = (props) => {
               label="Planned Start Time"
               inputFormat="dd/MM/yyyy"
               value={plannedStart}
-              onChange={(e: Date | null) => handlePlannedStart(e)}
-              renderInput={(params) => <TextField {...params} />}
+              onChange={(e: Date | null) =>
+                handlePlannedStart(e)
+              }
+              renderInput={(params) => (
+                <TextField {...params} />
+              )}
               minDate={today}
             />
             <DesktopDatePicker
               label="Planned End Time"
               inputFormat="dd/MM/yyyy"
               value={plannedEnd}
-              onChange={(e: Date | null) => handlePlannedEnd(e)}
-              renderInput={(params) => <TextField {...params} />}
+              onChange={(e: Date | null) =>
+                handlePlannedEnd(e)
+              }
+              renderInput={(params) => (
+                <TextField {...params} />
+              )}
               minDate={plannedStart ? plannedStart : today}
             />
-
           </Stack>
           <LoadingButton
             variant="contained"
@@ -164,11 +197,18 @@ const EditModal: FC<any> = (props) => {
           </LoadingButton>
         </LocalizationProvider>
         <div style={{ marginTop: '20px' }}>
-          {error && <Alert severity="error">Error: Couldn't edit the task!</Alert>}
-          {error === false && <Alert severity="success">Success: The task has been edited!</Alert>}
+          {error && (
+            <Alert severity="error">
+              Error: Couldn't edit the task!
+            </Alert>
+          )}
+          {success && (
+            <Alert severity="success">
+              Success: The task has been edited!
+            </Alert>
+          )}
         </div>
       </Box>
-
     </Modal>
   );
 };

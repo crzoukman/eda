@@ -1,5 +1,6 @@
 import React, {
   FC,
+  MutableRefObject,
   useContext,
   useEffect,
   useReducer,
@@ -38,97 +39,79 @@ const ProfileForm: FC = () => {
     reducer,
     initialState,
   );
-  const [_, forceUpdate] = useState({});
-  const [getProfileDataCB, setGetProfileDataCB] =
-    useState<null | ApiResponseInterface>(null);
-  const [updateProfileCB, setUpdateProfileCB] =
-    useState<null | ApiResponseInterface>(null);
 
-  const {
-    logout,
-    queue,
-    setQueueUpdated,
-    QueueFnList,
-    pushToQueue,
-  } = useContext(AppContext) as IAppContext;
+  const { logout } = useContext(AppContext) as IAppContext;
 
-  let updateProfileTimeout: NodeJS.Timeout;
+  const updateProfileTimeout: MutableRefObject<NodeJS.Timeout | null> =
+    useRef(null);
 
   useEffect(() => {
-    const getProfileData = async () => {
-      const username = getUsernameFromLS();
-      const token = getTokenFromCookie(username, 'at');
-
-      const res = await Api.getProfileData(token);
-
-      return res;
-    };
-
-    setIsSending(true);
-
-    pushToQueue({
-      id: uuidv4(),
-      name: QueueFnList.getProfileData,
-      fn: getProfileData,
-      args: [],
-      cb: setGetProfileDataCB,
-      merge: false,
-    });
-
     return () => {
-      clearTimeout(updateProfileTimeout);
+      if (updateProfileTimeout.current) {
+        clearTimeout(updateProfileTimeout.current);
+      }
     };
   }, []);
 
   useEffect(() => {
-    if (getProfileDataCB) {
-      if (getProfileDataCB.status === 200) {
-        dispatch(SetAllAction(getProfileDataCB.data));
-      }
+    (async () => {
+      const username = getUsernameFromLS();
+      const token = getTokenFromCookie(username, 'at');
+
+      setIsSending(true);
+
+      const res = await Api.getProfileData(token);
 
       setIsSending(false);
-      setGetProfileDataCB(null);
-    }
 
-    if (updateProfileCB) {
-      if (updateProfileCB.status === 200) {
-        dispatch(SetAllAction(updateProfileCB.data));
-        setShowSuccess(true);
-
-        updateProfileTimeout = setTimeout(() => {
-          setShowSuccess(false);
-        }, config.ALERT_DELAY);
+      if (res.status === 200) {
+        dispatch(SetAllAction(res.data));
       }
 
-      setIsSending(false);
-      setUpdateProfileCB(null);
-    }
-  }, [getProfileDataCB, updateProfileCB]);
+      if (res.status !== 200) {
+        console.log(
+          '[ProfileForm.tsx] Получение данных для профайла. Невалидный токен.',
+        );
+        logout();
+      }
+    })();
+  }, []);
 
   const formHandler = (e: React.FormEvent) => {
     e.preventDefault();
 
-    setIsSending(true);
-
-    async function updateProfile() {
+    (async () => {
       const username = getUsernameFromLS();
       const token = getTokenFromCookie(username, 'at');
+
+      setIsSending(true);
+
       const res = await Api.updateProfile(
         profileState,
         token,
       );
 
-      return res;
-    }
+      setIsSending(false);
 
-    pushToQueue({
-      id: uuidv4(),
-      name: QueueFnList.updateProfile,
-      fn: updateProfile,
-      args: [],
-      cb: setUpdateProfileCB,
-      merge: false,
-    });
+      if (res.status === 200) {
+        dispatch(SetAllAction(res.data));
+        setShowSuccess(true);
+
+        updateProfileTimeout.current = setTimeout(() => {
+          setShowSuccess(false);
+        }, config.ALERT_DELAY);
+      } else if (res.status === 401) {
+        console.log(
+          '[ProfileForm.tsx] Обновление данных профайла. Невалидный токен.',
+        );
+        logout();
+      } else {
+        console.log(
+          '[ProfileForm.tsx] Обновление данных. Что-то случилось. Ошибка: ',
+          res.status,
+        );
+      }
+    })();
   };
 
   const firstnameHandler = (

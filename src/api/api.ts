@@ -2,18 +2,16 @@ import axios, { AxiosError } from 'axios';
 import { ICreateUser, ILogin } from './types';
 import { BASE_URL } from './baseURL';
 import { config } from 'config';
-import { ApiResponseInterface } from 'types';
-
-interface IGetRestoreData {
-  username: string;
-  answer: string;
-  password: string;
-}
+import {
+  ApiResponseInterface,
+  RestorePasswordInterface,
+  TokensInterface,
+} from 'types';
 
 export class Api {
   static async checkUser(
     token: string,
-  ): Promise<ApiResponseInterface> {
+  ): Promise<ApiResponseInterface<any>> {
     const controller = new AbortController();
 
     const id = setTimeout(() => {
@@ -145,7 +143,7 @@ export class Api {
 
   static async refreshTokens(
     token: string,
-  ): Promise<ApiResponseInterface> {
+  ): Promise<ApiResponseInterface<TokensInterface>> {
     try {
       const controller = new AbortController();
       const id = setTimeout(() => {
@@ -176,7 +174,7 @@ export class Api {
 
   static async getProfileData(
     token: string,
-  ): Promise<ApiResponseInterface> {
+  ): Promise<ApiResponseInterface<any>> {
     try {
       const controller = new AbortController();
       const id = setTimeout(() => {
@@ -205,7 +203,7 @@ export class Api {
   static async updateProfile(
     data: any,
     token: string,
-  ): Promise<ApiResponseInterface> {
+  ): Promise<ApiResponseInterface<any>> {
     try {
       const controller = new AbortController();
       const id = setTimeout(() => {
@@ -235,49 +233,65 @@ export class Api {
     }
   }
 
-  // ******************************************
-  // ******************************************
-  // ******************************************
-  // ******************************************
-  // ******************************************
-
-  static async getRestoreData(data: IGetRestoreData) {
+  static async getQuestion(
+    username: string,
+    email: string,
+  ): Promise<ApiResponseInterface<any>> {
     try {
-      const res = await axios.post(
-        BASE_URL + '/api/restore',
-        { ...data },
-      );
+      const controller = new AbortController();
+      const id = setTimeout(() => {
+        controller.abort();
+      }, config.REQUEST_TIMEOUT);
 
-      if (res.data !== null) return true;
-      return false;
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error('getRestoreData() error');
-      }
-    }
-  }
-
-  static async getQuestion(username: string) {
-    try {
       const res = await axios.get(
-        BASE_URL + '/api/restore',
+        BASE_URL + '/api/auth/get-question',
         {
-          params: { username },
+          params: { username, email },
+          signal: controller.signal,
         },
       );
-      return res;
-    } catch (e) {
-      if (e instanceof Error) {
-        console.error('getQuestion() error');
+
+      clearTimeout(id);
+
+      return { data: res.data, status: 200 };
+    } catch (e: any) {
+      if (e.response) {
+        return { status: e.response.status };
       }
+
+      return { status: 5000 };
     }
   }
 
-  static refreshToken(token: string) {
-    return axios.post(BASE_URL + '/api/refresh', null, {
-      headers: {
-        'x-refresh': token,
-      },
-    });
+  static async restorePassword(
+    data: RestorePasswordInterface,
+  ) {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => {
+        controller.abort();
+      }, config.REQUEST_TIMEOUT);
+
+      const res = await axios.post(
+        BASE_URL + '/api/auth/restore-password',
+        data,
+        {
+          signal: controller.signal,
+        },
+      );
+
+      clearTimeout(id);
+
+      return { data: res.data, status: 200 };
+    } catch (e: any) {
+      if (e.response) {
+        return {
+          status: e.response.status,
+          message: e.response.data.message,
+        };
+      }
+
+      return { status: 5000 };
+    }
   }
 }

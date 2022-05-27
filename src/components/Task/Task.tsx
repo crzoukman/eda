@@ -1,13 +1,19 @@
-import { FC, useState } from "react";
-import { IconsWrapperStyled, WrapperStyled } from "./Task.styled";
+import { FC, useContext, useState } from 'react';
+import {
+  IconsWrapperStyled,
+  WrapperStyled,
+} from './Task.styled';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import { TasksAPI } from "api/TasksAPI";
-import EditModal from "components/EditModal";
+import { TasksAPI } from 'api/TasksAPI';
+import EditModal from 'components/EditModal';
 import CheckIcon from '@mui/icons-material/Check';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import { getCookie } from "utils/getCookie";
-import { useNavigate } from "react-router-dom";
+import formatDate from './utils/formatDate';
+import { getTokenFromCookie } from 'utils/getTokenFromCookie';
+import { getUsernameFromLS } from 'utils/getUsernameFromLS';
+import { AppContext } from 'App';
+import { IAppContext } from 'types';
 
 const iconStyles = {
   cursor: 'pointer',
@@ -17,20 +23,23 @@ const iconStyles = {
   '&:hover': {
     background: 'whitesmoke',
     borderRadius: '4px',
-  }
-}
+  },
+};
 
 const Task: FC<any> = (props) => {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<null | boolean>(null);
   const [isBusy, setIsBusy] = useState(false);
-  const navigate = useNavigate();
 
-  const plannedStart = new Date(props.plannedStart).toISOString().slice(0, 10).split('-').reverse().join('-');
-  const plannedEnd = new Date(props.plannedEnd).toISOString().slice(0, 10).split('-').reverse().join('-');
-  const startedTime = props.startedTime && new Date(props.startedTime).toISOString().slice(0, 10).split('-').reverse().join('-');
-  const startedEnd = props.endedTime && new Date(props.endedTime).toISOString().slice(0, 10).split('-').reverse().join('-');
-  const added = new Date(props.date).toISOString().slice(0, 10).split('-').reverse().join('-');
+  const { logout } = useContext(AppContext) as IAppContext;
+
+  const plannedStart = formatDate(props.plannedStart);
+  const plannedEnd = formatDate(props.plannedEnd);
+  const startedTime =
+    props.startedTime && formatDate(props.startedTime);
+  const startedEnd =
+    props.endedTime && formatDate(props.endedTime);
+  const added = formatDate(props.added);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
@@ -40,36 +49,21 @@ const Task: FC<any> = (props) => {
       const date = new Date();
       setIsBusy(true);
 
-      const userData = JSON.parse(localStorage.getItem('userData') as string);
-      const token = getCookie('accessToken' + userData._id);
+      const username = getUsernameFromLS();
+      const token = getTokenFromCookie(username, 'at');
 
       const res = await TasksAPI.editTask(
         {
-          _id: props._id,
+          id: props.id,
           started: true,
           completed: false,
           startedTime: date,
         },
-        token
+        token,
       );
 
-      if (res?.status === 403) {
-        const token = getCookie('accessToken' + userData._id);
-        try {
-          await TasksAPI.editTask(
-            {
-              _id: props._id,
-              started: true,
-              completed: false,
-              startedTime: date,
-            },
-            token
-          );
-
-        } catch (e: any) {
-          console.log(e.message);
-          navigate('/login');
-        }
+      if (res.status === 403) {
+        logout();
       }
 
       setIsBusy(false);
@@ -83,36 +77,21 @@ const Task: FC<any> = (props) => {
       const date = new Date();
       setIsBusy(true);
 
-      const userData = JSON.parse(localStorage.getItem('userData') as string);
-      const token = getCookie('accessToken' + userData._id);
+      const username = getUsernameFromLS();
+      const token = getTokenFromCookie(username, 'at');
 
       const res = await TasksAPI.editTask(
         {
-          _id: props._id,
+          id: props.id,
           completed: true,
           started: false,
           endedTime: date,
         },
-        token
+        token,
       );
 
-      if (res?.status === 403) {
-        const token = getCookie('accessToken' + userData._id);
-        try {
-          await TasksAPI.editTask(
-            {
-              _id: props._id,
-              completed: true,
-              started: false,
-              endedTime: date,
-            },
-            token
-          );
-
-        } catch (e: any) {
-          console.log(e.message);
-          navigate('/login');
-        }
+      if (res.status === 403) {
+        logout();
       }
 
       setIsBusy(false);
@@ -125,20 +104,16 @@ const Task: FC<any> = (props) => {
     if (!isBusy) {
       setIsBusy(true);
 
-      const userData = JSON.parse(localStorage.getItem('userData') as string);
-      const token = getCookie('accessToken' + userData._id);
+      const username = getUsernameFromLS();
+      const token = getTokenFromCookie(username, 'at');
 
-      const res = await TasksAPI.deleteTask(props._id, token);
+      const res = await TasksAPI.deleteTask(
+        props.id,
+        token,
+      );
 
-      if (res?.status === 403) {
-        const token = getCookie('accessToken' + userData._id);
-        try {
-          await TasksAPI.deleteTask(props._id, token);
-
-        } catch (e: any) {
-          console.log(e.message);
-          navigate('/login');
-        }
+      if (res.status === 403) {
+        logout();
       }
 
       setIsBusy(false);
@@ -160,42 +135,44 @@ const Task: FC<any> = (props) => {
       <div>{startedTime ? startedTime : '-'}</div>
       <div>{startedEnd ? startedEnd : '-'}</div>
       <IconsWrapperStyled>
-        {!props.started && !props.completed && !props.expired && (
-          <PlayArrowIcon
-            onClick={handleStart}
-            fontSize='large'
-            sx={{
-              color: isBusy ? 'gray' : 'DeepPink',
-              ...iconStyles
-            }}
-          />
-        )}
+        {!props.started &&
+          !props.completed &&
+          !props.expired && (
+            <PlayArrowIcon
+              onClick={handleStart}
+              fontSize="large"
+              sx={{
+                color: isBusy ? 'gray' : 'DeepPink',
+                ...iconStyles,
+              }}
+            />
+          )}
         {!props.completed && props.started && (
           <CheckIcon
             onClick={handleCompleted}
-            fontSize='large'
+            fontSize="large"
             sx={{
               color: isBusy ? 'gray' : 'green',
-              ...iconStyles
+              ...iconStyles,
             }}
           />
         )}
         {!props.completed && !props.expired && (
           <EditIcon
             onClick={handleEdit}
-            fontSize='large'
+            fontSize="large"
             sx={{
               color: 'blue',
-              ...iconStyles
+              ...iconStyles,
             }}
           />
         )}
         <DeleteIcon
           onClick={handleDelete}
-          fontSize='large'
+          fontSize="large"
           sx={{
             color: isBusy ? 'gray' : 'red',
-            ...iconStyles
+            ...iconStyles,
           }}
         />
       </IconsWrapperStyled>
@@ -206,7 +183,6 @@ const Task: FC<any> = (props) => {
         updateState={props.updateState}
         open={open}
       />
-
     </WrapperStyled>
   );
 };

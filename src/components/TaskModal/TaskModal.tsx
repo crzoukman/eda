@@ -1,22 +1,63 @@
-import { DesktopDatePicker, LoadingButton, LocalizationProvider } from "@mui/lab";
-import { Alert, Box, InputLabel, MenuItem, Modal, Select, Stack, TextField } from "@mui/material";
-import { TasksAPI } from "api/TasksAPI";
-import React, { FC, useState } from "react";
+import {
+  DesktopDatePicker,
+  LoadingButton,
+  LocalizationProvider,
+} from '@mui/lab';
+import {
+  Alert,
+  Box,
+  MenuItem,
+  Modal,
+  Stack,
+  TextField,
+} from '@mui/material';
+import { TasksAPI } from 'api/TasksAPI';
+import {
+  FC,
+  useState,
+  useRef,
+  useEffect,
+  useContext,
+} from 'react';
 import { IProps } from './types';
 import AdapterDateFns from '@mui/lab/AdapterDateFns';
-import { style, typesConfig } from "./config";
-import { getCookie } from "utils/getCookie";
-import { useNavigate } from "react-router-dom";
+import { style, typesConfig } from './config';
+import { getTokenFromCookie } from 'utils/getTokenFromCookie';
+import { getUsernameFromLS } from 'utils/getUsernameFromLS';
+import { config } from 'config';
+import { AppContext } from 'App';
+import { IAppContext } from 'types';
 
 const today = new Date();
 
-const TaskModal: FC<IProps> = ({ handleClose, open, updateState }) => {
+const TaskModal: FC<IProps> = ({
+  handleClose,
+  open,
+  updateState,
+}) => {
   const [task, setTask] = useState('');
   const [error, setError] = useState<null | boolean>(null);
-  const [plannedStart, setPlannedStart] = React.useState<Date | null>(today);
-  const [plannedEnd, setPlannedEnd] = React.useState<Date | null>(today);
+  const [success, setSuccess] = useState<null | boolean>(
+    null,
+  );
+  const [plannedStart, setPlannedStart] =
+    useState<Date | null>(today);
+  const [plannedEnd, setPlannedEnd] = useState<Date | null>(
+    today,
+  );
   const [type, setType] = useState<string>('Type 1');
-  const navigate = useNavigate();
+
+  const { logout } = useContext(AppContext) as IAppContext;
+
+  const timeoutId = useRef<null | NodeJS.Timeout>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutId.current) {
+        clearTimeout(timeoutId.current);
+      }
+    };
+  }, []);
 
   const handlePlannedStart = (newValue: Date | null) => {
     setPlannedStart(newValue);
@@ -29,76 +70,37 @@ const TaskModal: FC<IProps> = ({ handleClose, open, updateState }) => {
   const typeHandler = (type: string) => setType(type);
 
   const addTaskHandler = async () => {
-    const date = new Date();
-    const id = JSON.parse(localStorage.getItem('userData') as string)._id;
-
-    if (plannedStart && plannedEnd && plannedEnd.getTime() < plannedStart.getTime()) {
-      setError(true);
-      setTimeout(() => {
-        setError(null);
-      }, 3000);
-    }
-
-    const userData = JSON.parse(localStorage.getItem('userData') as string);
-    const token = getCookie('accessToken' + userData._id);
+    const added = new Date();
+    const username = getUsernameFromLS();
+    const token = getTokenFromCookie(username, 'at');
 
     if (task.length) {
-      const res = await TasksAPI.addTask({
-        userId: id,
-        name: task,
-        date,
-        type,
-        plannedStart,
-        plannedEnd,
-        completed: false,
-        started: false,
-      },
-        token
+      const res = await TasksAPI.addTask(
+        {
+          name: task,
+          type,
+          plannedStart,
+          plannedEnd,
+          added,
+        },
+        token,
       );
 
-      if (res?.status === 200) {
-        setError(false);
+      if (res.status === 200) {
+        setSuccess(true);
+
+        timeoutId.current = setTimeout(() => {
+          setSuccess(null);
+        }, config.ALERT_DELAY);
       } else {
-        if (res?.status === 403) {
-          const token = getCookie('accessToken' + userData._id);
-          try {
-            await TasksAPI.addTask({
-              userId: id,
-              name: task,
-              date,
-              type,
-              plannedStart,
-              plannedEnd,
-              completed: false,
-              started: false,
-            },
-              token
-            );
-
-            setError(false);
-
-          } catch (e: any) {
-            console.log(e.message);
-
-            setError(true);
-
-            setTimeout(() => {
-              setError(null);
-              navigate('/login');
-            }, 3000);
-          }
+        if (res.status === 403) {
+          logout();
         }
-
       }
-
-      setTimeout(() => {
-        setError(null);
-      }, 3000);
     }
 
     updateState({});
   };
-
 
   const taskHandler = (name: string) => {
     setTask(name);
@@ -116,7 +118,9 @@ const TaskModal: FC<IProps> = ({ handleClose, open, updateState }) => {
           fullWidth
           label="Task Name"
           id="fullWidth"
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => taskHandler(e.target.value)}
+          onChange={(
+            e: React.ChangeEvent<HTMLInputElement>,
+          ) => taskHandler(e.target.value)}
           value={task}
           required
           sx={{ mb: 2 }}
@@ -127,14 +131,21 @@ const TaskModal: FC<IProps> = ({ handleClose, open, updateState }) => {
           select
           label="Types"
           value={type}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => typeHandler(e.target.value)}
+          onChange={(
+            e: React.ChangeEvent<HTMLInputElement>,
+          ) => typeHandler(e.target.value)}
           sx={{ mb: 2 }}
         >
-          {typesConfig.map((option: { value: string, label: string }) => (
-            <MenuItem key={option.value} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
+          {typesConfig.map(
+            (option: { value: string; label: string }) => (
+              <MenuItem
+                key={option.value}
+                value={option.value}
+              >
+                {option.label}
+              </MenuItem>
+            ),
+          )}
         </TextField>
 
         <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -143,19 +154,26 @@ const TaskModal: FC<IProps> = ({ handleClose, open, updateState }) => {
               label="Planned Start Time"
               inputFormat="dd/MM/yyyy"
               value={plannedStart}
-              onChange={(e: Date | null) => handlePlannedStart(e)}
-              renderInput={(params) => <TextField {...params} />}
+              onChange={(e: Date | null) =>
+                handlePlannedStart(e)
+              }
+              renderInput={(params) => (
+                <TextField {...params} />
+              )}
               minDate={today}
             />
             <DesktopDatePicker
               label="Planned End Time"
               inputFormat="dd/MM/yyyy"
               value={plannedEnd}
-              onChange={(e: Date | null) => handlePlannedEnd(e)}
-              renderInput={(params) => <TextField {...params} />}
+              onChange={(e: Date | null) =>
+                handlePlannedEnd(e)
+              }
+              renderInput={(params) => (
+                <TextField {...params} />
+              )}
               minDate={plannedStart ? plannedStart : today}
             />
-
           </Stack>
           <LoadingButton
             variant="contained"
@@ -166,11 +184,18 @@ const TaskModal: FC<IProps> = ({ handleClose, open, updateState }) => {
           </LoadingButton>
         </LocalizationProvider>
         <div>
-          {error && <Alert severity="error">Error: Couldn't add the task!</Alert>}
-          {error === false && <Alert severity="success">Success: The task has been added!</Alert>}
+          {error && (
+            <Alert severity="error">
+              Error: Couldn't add the task!
+            </Alert>
+          )}
+          {success && (
+            <Alert severity="success">
+              Success: The task has been added!
+            </Alert>
+          )}
         </div>
       </Box>
-
     </Modal>
   );
 };
