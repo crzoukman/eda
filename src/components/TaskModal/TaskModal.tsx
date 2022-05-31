@@ -27,6 +27,7 @@ import { getUsernameFromLS } from 'utils/getUsernameFromLS';
 import { AppContext } from 'App';
 import { ApiResponseInterface, IAppContext } from 'types';
 import { RequestNameList } from 'Connect';
+import { config } from 'config';
 
 const today = new Date();
 
@@ -49,7 +50,7 @@ const TaskModal: FC<IProps> = ({
   const [addTaskCB, setAddTaskCB] =
     useState<null | ApiResponseInterface<any>>(null);
 
-  const { logout, push2Queue, lock } = useContext(
+  const { push2Queue, lock } = useContext(
     AppContext,
   ) as IAppContext;
 
@@ -67,6 +68,11 @@ const TaskModal: FC<IProps> = ({
     if (addTaskCB) {
       setAddTaskCB(null);
       updateState({});
+      setSuccess(true);
+
+      timeoutId.current = setTimeout(() => {
+        setSuccess(false);
+      }, config.ALERT_DELAY);
     }
   }, [addTaskCB]);
 
