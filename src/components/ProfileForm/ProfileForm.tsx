@@ -94,6 +94,8 @@ const ProfileForm: FC = () => {
           }, config.ALERT_DELAY);
         }
       }
+
+      setUpdateProfileCB(null);
     }
 
     if (getProfileDataCB) {
@@ -102,6 +104,8 @@ const ProfileForm: FC = () => {
       if (getProfileDataCB.status === 200) {
         dispatch(SetAllAction(getProfileDataCB.data));
       }
+
+      setGetProfileDataCB(null);
     }
   }, [updateProfileCB, getProfileDataCB]);
 
