@@ -1,4 +1,4 @@
-import { FC, useContext, useState } from 'react';
+import { FC, useContext, useEffect, useState } from 'react';
 import {
   IconsWrapperStyled,
   WrapperStyled,
@@ -13,7 +13,8 @@ import formatDate from './utils/formatDate';
 import { getTokenFromCookie } from 'utils/getTokenFromCookie';
 import { getUsernameFromLS } from 'utils/getUsernameFromLS';
 import { AppContext } from 'App';
-import { IAppContext } from 'types';
+import { ApiResponseInterface, IAppContext } from 'types';
+import { RequestNameList } from 'Connect';
 
 const iconStyles = {
   cursor: 'pointer',
@@ -30,8 +31,16 @@ const Task: FC<any> = (props) => {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<null | boolean>(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [startTaskCB, setStartTaskCB] =
+    useState<null | ApiResponseInterface<any>>(null);
+  const [completeTaskCB, setCompleteTaskCB] =
+    useState<null | ApiResponseInterface<any>>(null);
+  const [deleteTaskCB, setDeleteTaskCB] =
+    useState<null | ApiResponseInterface<any>>(null);
 
-  const { logout } = useContext(AppContext) as IAppContext;
+  const { logout, push2Queue, lock } = useContext(
+    AppContext,
+  ) as IAppContext;
 
   const plannedStart = formatDate(props.plannedStart);
   const plannedEnd = formatDate(props.plannedEnd);
@@ -44,85 +53,139 @@ const Task: FC<any> = (props) => {
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  const handleStart = async () => {
-    if (!isBusy) {
-      const date = new Date();
-      setIsBusy(true);
-
-      const username = getUsernameFromLS();
-      const token = getTokenFromCookie(username, 'at');
-
-      const res = await TasksAPI.editTask(
-        {
-          id: props.id,
-          started: true,
-          completed: false,
-          startedTime: date,
-        },
-        token,
-      );
-
-      if (res.status === 403) {
-        logout();
-      }
-
+  useEffect(() => {
+    if (startTaskCB) {
       setIsBusy(false);
-
       props.updateState({});
+      setStartTaskCB(null);
+    }
+
+    if (completeTaskCB) {
+      setIsBusy(false);
+      props.updateState({});
+      setCompleteTaskCB(null);
+    }
+
+    if (deleteTaskCB) {
+      setIsBusy(false);
+      props.updateState({});
+      setDeleteTaskCB(null);
+    }
+  }, [startTaskCB, completeTaskCB, deleteTaskCB]);
+
+  const handleStart = async () => {
+    if (!isBusy && !lock) {
+      const startTask = async () => {
+        const date = new Date();
+        setIsBusy(true);
+
+        const username = getUsernameFromLS();
+        const token = getTokenFromCookie(username, 'at');
+
+        const res = await TasksAPI.editTask(
+          {
+            id: props.id,
+            started: true,
+            completed: false,
+            startedTime: date,
+          },
+          token,
+        );
+
+        return res;
+      };
+
+      if (!lock) {
+        push2Queue({
+          name: RequestNameList.startTask,
+          fn: startTask,
+          cb: setStartTaskCB,
+          processOnlyLast: false,
+          identifier: RequestNameList.startTask + props.id,
+        });
+      } else {
+        console.log(
+          '[Task.tsx] lock = true. Не могу пушнуть startTask',
+        );
+      }
     }
   };
 
   const handleCompleted = async () => {
-    if (!isBusy) {
-      const date = new Date();
-      setIsBusy(true);
+    if (!isBusy && !lock) {
+      const completeTask = async () => {
+        const date = new Date();
+        setIsBusy(true);
 
-      const username = getUsernameFromLS();
-      const token = getTokenFromCookie(username, 'at');
+        const username = getUsernameFromLS();
+        const token = getTokenFromCookie(username, 'at');
 
-      const res = await TasksAPI.editTask(
-        {
-          id: props.id,
-          completed: true,
-          started: false,
-          endedTime: date,
-        },
-        token,
-      );
+        const res = await TasksAPI.editTask(
+          {
+            id: props.id,
+            completed: true,
+            started: false,
+            endedTime: date,
+          },
+          token,
+        );
 
-      if (res.status === 403) {
-        logout();
+        return res;
+      };
+
+      if (!lock) {
+        push2Queue({
+          name: RequestNameList.completeTask,
+          fn: completeTask,
+          cb: setCompleteTaskCB,
+          processOnlyLast: false,
+          identifier:
+            RequestNameList.completeTask + props.id,
+        });
+      } else {
+        console.log(
+          '[Task.tsx] lock = true. Не могу пушнуть comleteTask',
+        );
       }
-
-      setIsBusy(false);
-
-      props.updateState({});
     }
   };
 
   const handleDelete = async () => {
-    if (!isBusy) {
-      setIsBusy(true);
+    const deleteTask = async () => {
+      if (!isBusy && !lock) {
+        setIsBusy(true);
 
-      const username = getUsernameFromLS();
-      const token = getTokenFromCookie(username, 'at');
+        const username = getUsernameFromLS();
+        const token = getTokenFromCookie(username, 'at');
 
-      const res = await TasksAPI.deleteTask(
-        props.id,
-        token,
-      );
+        const res = await TasksAPI.deleteTask(
+          props.id,
+          token,
+        );
 
-      if (res.status === 403) {
-        logout();
+        return res;
       }
+    };
 
-      setIsBusy(false);
-      props.updateState({});
+    if (!lock) {
+      push2Queue({
+        name: RequestNameList.deleteTask,
+        fn: deleteTask,
+        cb: setDeleteTaskCB,
+        processOnlyLast: false,
+        identifier: RequestNameList.deleteTask + props.id,
+      });
+    } else {
+      console.log(
+        '[Task.tsx] lock = true. Не могу пушнуть deleteTask',
+      );
     }
   };
 
   const handleEdit = () => {
-    handleOpen();
+    if (!isBusy && !lock) {
+      handleOpen();
+    }
   };
 
   return (
@@ -142,7 +205,7 @@ const Task: FC<any> = (props) => {
               onClick={handleStart}
               fontSize="large"
               sx={{
-                color: isBusy ? 'gray' : 'DeepPink',
+                color: isBusy || lock ? 'gray' : 'DeepPink',
                 ...iconStyles,
               }}
             />
@@ -152,7 +215,7 @@ const Task: FC<any> = (props) => {
             onClick={handleCompleted}
             fontSize="large"
             sx={{
-              color: isBusy ? 'gray' : 'green',
+              color: isBusy || lock ? 'gray' : 'green',
               ...iconStyles,
             }}
           />
@@ -162,7 +225,7 @@ const Task: FC<any> = (props) => {
             onClick={handleEdit}
             fontSize="large"
             sx={{
-              color: 'blue',
+              color: isBusy || lock ? 'gray' : 'blue',
               ...iconStyles,
             }}
           />
@@ -171,7 +234,7 @@ const Task: FC<any> = (props) => {
           onClick={handleDelete}
           fontSize="large"
           sx={{
-            color: isBusy ? 'gray' : 'red',
+            color: isBusy || lock ? 'gray' : 'red',
             ...iconStyles,
           }}
         />

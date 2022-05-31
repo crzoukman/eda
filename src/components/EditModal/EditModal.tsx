@@ -25,7 +25,8 @@ import { getTokenFromCookie } from 'utils/getTokenFromCookie';
 import { getUsernameFromLS } from 'utils/getUsernameFromLS';
 import { config } from 'config';
 import { AppContext } from 'App';
-import { IAppContext } from 'types';
+import { ApiResponseInterface, IAppContext } from 'types';
+import { RequestNameList } from 'Connect';
 
 const today = new Date();
 
@@ -36,14 +37,17 @@ const EditModal: FC<any> = (props) => {
     null,
   );
   const [plannedStart, setPlannedStart] =
-    React.useState<Date | null>(
-      new Date(props.plannedStart),
-    );
-  const [plannedEnd, setPlannedEnd] =
-    React.useState<Date | null>(new Date(props.plannedEnd));
+    useState<Date | null>(new Date(props.plannedStart));
+  const [plannedEnd, setPlannedEnd] = useState<Date | null>(
+    new Date(props.plannedEnd),
+  );
   const [type, setType] = useState<string>(props.type);
+  const [editTaskCB, setEditTaskCB] =
+    useState<null | ApiResponseInterface<any>>(null);
 
-  const { logout } = useContext(AppContext) as IAppContext;
+  const { push2Queue, lock } = useContext(
+    AppContext,
+  ) as IAppContext;
 
   const timeError = useRef<boolean>(false);
   const timeoutId = useRef<null | NodeJS.Timeout>(null);
@@ -56,6 +60,13 @@ const EditModal: FC<any> = (props) => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (editTaskCB) {
+      props.updateState({});
+      setEditTaskCB(null);
+    }
+  }, [editTaskCB]);
 
   const handlePlannedStart = (newValue: Date | null) => {
     setPlannedStart(newValue);
@@ -84,10 +95,10 @@ const EditModal: FC<any> = (props) => {
       }, config.ALERT_DELAY);
     }
 
-    const username = getUsernameFromLS();
-    const token = getTokenFromCookie(username, 'at');
+    const editTask = async () => {
+      const username = getUsernameFromLS();
+      const token = getTokenFromCookie(username, 'at');
 
-    if (task.length && !timeError.current) {
       const res = await TasksAPI.editTask(
         {
           id: props.id,
@@ -100,20 +111,20 @@ const EditModal: FC<any> = (props) => {
         token,
       );
 
-      if (res.status === 200) {
-        setSuccess(true);
+      return res;
+    };
 
-        timeoutId.current = setTimeout(() => {
-          setSuccess(false);
-        }, config.ALERT_DELAY);
-      } else {
-        if (res.status === 403) {
-          logout();
-        }
+    if (!lock) {
+      if (task.length && !timeError.current) {
+        push2Queue({
+          name: RequestNameList.editTask,
+          fn: editTask,
+          cb: setEditTaskCB,
+          processOnlyLast: false,
+          identifier: RequestNameList.editTask + props.id,
+        });
       }
     }
-
-    props.updateState({});
   };
 
   const taskHandler = (name: string) => {
@@ -192,6 +203,7 @@ const EditModal: FC<any> = (props) => {
           <LoadingButton
             variant="contained"
             onClick={editTaskHandler}
+            disabled={lock}
           >
             Submit
           </LoadingButton>

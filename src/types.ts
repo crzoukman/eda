@@ -1,7 +1,11 @@
+import { Push2QueueFnType } from 'App';
+
 export interface IAppContext {
   isAuth: boolean;
   setIsAuth: (arg: boolean) => void;
   logout: () => void;
+  push2Queue: Push2QueueFnType;
+  lock: boolean;
 }
 
 export interface ApiResponseInterface<T> {

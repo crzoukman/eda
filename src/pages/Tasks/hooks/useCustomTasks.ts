@@ -4,8 +4,9 @@ import { ITasks } from '../types';
 import { getTokenFromCookie } from 'utils/getTokenFromCookie';
 import { getUsernameFromLS } from 'utils/getUsernameFromLS';
 import { AppContext } from 'App';
-import { IAppContext } from 'types';
+import { ApiResponseInterface, IAppContext } from 'types';
 import formatDate from '../utils/formatDate';
+import { RequestNameList } from 'Connect';
 
 const useCustomTasks = () => {
   const [open, setOpen] = useState(false);
@@ -25,32 +26,46 @@ const useCustomTasks = () => {
   const [update, updateState] = useState({});
   const [showFilters, setShowFilters] = useState(false);
   const [sorted, setSorted] = useState<ITasks[]>(tasks);
+  const [getTasksCB, setGetTasksCB] =
+    useState<null | ApiResponseInterface<any>>(null);
 
-  const { logout } = useContext(AppContext) as IAppContext;
+  const { logout, push2Queue } = useContext(
+    AppContext,
+  ) as IAppContext;
 
   useEffect(() => {
     const lsUserData = localStorage.getItem(
       'userData',
     ) as string;
 
-    (async () => {
-      if (lsUserData) {
-        const username = getUsernameFromLS();
-        const token = getTokenFromCookie(username, 'at');
+    const getTasks = async () => {
+      const username = getUsernameFromLS();
+      const token = getTokenFromCookie(username, 'at');
 
-        const res = await TasksAPI.getTasks(token);
+      const res = await TasksAPI.getTasks(token);
 
-        if (res.status === 200) {
-          setTasks(res.data);
-          setSorted(res.data);
-        } else {
-          if (res.status === 401) {
-            logout();
-          }
-        }
-      }
-    })();
+      return res;
+    };
+
+    if (lsUserData) {
+      push2Queue({
+        name: RequestNameList.getTasks,
+        fn: getTasks,
+        cb: setGetTasksCB,
+        processOnlyLast: true,
+      });
+    }
   }, [update]);
+
+  useEffect(() => {
+    if (getTasksCB) {
+      if (getTasksCB.status === 200) {
+        setTasks(getTasksCB.data);
+        setSorted(getTasksCB.data);
+        setGetTasksCB(null);
+      }
+    }
+  }, [getTasksCB]);
 
   useEffect(() => {
     const today = new Date().getTime();

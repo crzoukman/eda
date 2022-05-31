@@ -29,7 +29,7 @@ import {
 } from './reducer/actions';
 import { AppContext } from 'App';
 import { ApiResponseInterface, IAppContext } from 'types';
-import { v4 as uuidv4 } from 'uuid';
+import { RequestNameList } from 'Connect';
 
 const ProfileForm: FC = () => {
   const [isSending, setIsSending] = useState(false);
@@ -39,8 +39,14 @@ const ProfileForm: FC = () => {
     reducer,
     initialState,
   );
+  const [updateProfileCB, setUpdateProfileCB] =
+    useState<null | ApiResponseInterface<any>>(null);
+  const [getProfileDataCB, setGetProfileDataCB] =
+    useState<null | ApiResponseInterface<any>>(null);
 
-  const { logout } = useContext(AppContext) as IAppContext;
+  const { push2Queue } = useContext(
+    AppContext,
+  ) as IAppContext;
 
   const updateProfileTimeout: MutableRefObject<NodeJS.Timeout | null> =
     useRef(null);
@@ -54,64 +60,74 @@ const ProfileForm: FC = () => {
   }, []);
 
   useEffect(() => {
-    (async () => {
+    setIsSending(true);
+
+    const getProfileData = async () => {
       const username = getUsernameFromLS();
       const token = getTokenFromCookie(username, 'at');
 
-      setIsSending(true);
-
       const res = await Api.getProfileData(token);
 
+      return res;
+    };
+
+    push2Queue({
+      name: RequestNameList.getProfileData,
+      fn: getProfileData,
+      cb: setGetProfileDataCB,
+      processOnlyLast: true,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (updateProfileCB) {
       setIsSending(false);
 
-      if (res.status === 200) {
-        dispatch(SetAllAction(res.data));
-      }
+      if (updateProfileCB.status === 200) {
+        dispatch(SetAllAction(updateProfileCB.data));
 
-      if (res.status !== 200) {
-        console.log(
-          '[ProfileForm.tsx] Получение данных для профайла. Невалидный токен.',
-        );
-        logout();
+        if (window.location.pathname === '/profile') {
+          setShowSuccess(true);
+
+          updateProfileTimeout.current = setTimeout(() => {
+            setShowSuccess(false);
+          }, config.ALERT_DELAY);
+        }
       }
-    })();
-  }, []);
+    }
+
+    if (getProfileDataCB) {
+      setIsSending(false);
+
+      if (getProfileDataCB.status === 200) {
+        dispatch(SetAllAction(getProfileDataCB.data));
+      }
+    }
+  }, [updateProfileCB, getProfileDataCB]);
+
+  async function updateProfile() {
+    const username = getUsernameFromLS();
+    const token = getTokenFromCookie(username, 'at');
+
+    const res = await Api.updateProfile(
+      profileState,
+      token,
+    );
+
+    return res;
+  }
 
   const formHandler = (e: React.FormEvent) => {
     e.preventDefault();
 
-    (async () => {
-      const username = getUsernameFromLS();
-      const token = getTokenFromCookie(username, 'at');
+    setIsSending(true);
 
-      setIsSending(true);
-
-      const res = await Api.updateProfile(
-        profileState,
-        token,
-      );
-
-      setIsSending(false);
-
-      if (res.status === 200) {
-        dispatch(SetAllAction(res.data));
-        setShowSuccess(true);
-
-        updateProfileTimeout.current = setTimeout(() => {
-          setShowSuccess(false);
-        }, config.ALERT_DELAY);
-      } else if (res.status === 401) {
-        console.log(
-          '[ProfileForm.tsx] Обновление данных профайла. Невалидный токен.',
-        );
-        logout();
-      } else {
-        console.log(
-          '[ProfileForm.tsx] Обновление данных. Что-то случилось. Ошибка: ',
-          res.status,
-        );
-      }
-    })();
+    push2Queue({
+      name: RequestNameList.updateProfile,
+      fn: updateProfile,
+      cb: setUpdateProfileCB,
+      processOnlyLast: true,
+    });
   };
 
   const firstnameHandler = (

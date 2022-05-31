@@ -24,6 +24,7 @@ import { Box, Modal } from '@mui/material';
 import Typography from '@mui/material/Typography';
 
 import refreshTokens from 'utils/refreshTokens';
+import { Push2QueueType } from 'Connect';
 
 const style = {
   position: 'absolute' as 'absolute',
@@ -41,10 +42,26 @@ export const AppContext = createContext<IAppContext | null>(
   null,
 );
 
-const App: FC = () => {
-  const [isAuth, setIsAuth] = useState(false);
+export type Push2QueueFnType = (
+  arg: Push2QueueType,
+) => void;
+
+interface PropsInterface {
+  push2Queue: Push2QueueFnType;
+  logout: () => void;
+  isAuth: boolean;
+  setIsAuth: (arg: boolean) => void;
+  lock: boolean;
+}
+
+const App: FC<PropsInterface> = ({
+  push2Queue,
+  logout,
+  isAuth,
+  setIsAuth,
+  lock,
+}) => {
   const [openModal, setOpenModal] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const userData = localStorage.getItem('userData');
@@ -99,18 +116,14 @@ const App: FC = () => {
     }
   }, []);
 
-  function logout() {
-    setIsAuth(false);
-    localStorage.removeItem('userData');
-    navigate('/auth');
-  }
-
   return (
     <AppContext.Provider
       value={{
         isAuth,
         setIsAuth,
         logout,
+        push2Queue,
+        lock,
       }}
     >
       <div>

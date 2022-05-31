@@ -24,9 +24,9 @@ import AdapterDateFns from '@mui/lab/AdapterDateFns';
 import { style, typesConfig } from './config';
 import { getTokenFromCookie } from 'utils/getTokenFromCookie';
 import { getUsernameFromLS } from 'utils/getUsernameFromLS';
-import { config } from 'config';
 import { AppContext } from 'App';
-import { IAppContext } from 'types';
+import { ApiResponseInterface, IAppContext } from 'types';
+import { RequestNameList } from 'Connect';
 
 const today = new Date();
 
@@ -46,8 +46,12 @@ const TaskModal: FC<IProps> = ({
     today,
   );
   const [type, setType] = useState<string>('Type 1');
+  const [addTaskCB, setAddTaskCB] =
+    useState<null | ApiResponseInterface<any>>(null);
 
-  const { logout } = useContext(AppContext) as IAppContext;
+  const { logout, push2Queue, lock } = useContext(
+    AppContext,
+  ) as IAppContext;
 
   const timeoutId = useRef<null | NodeJS.Timeout>(null);
 
@@ -58,6 +62,13 @@ const TaskModal: FC<IProps> = ({
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (addTaskCB) {
+      setAddTaskCB(null);
+      updateState({});
+    }
+  }, [addTaskCB]);
 
   const handlePlannedStart = (newValue: Date | null) => {
     setPlannedStart(newValue);
@@ -70,11 +81,11 @@ const TaskModal: FC<IProps> = ({
   const typeHandler = (type: string) => setType(type);
 
   const addTaskHandler = async () => {
-    const added = new Date();
-    const username = getUsernameFromLS();
-    const token = getTokenFromCookie(username, 'at');
+    const addTask = async () => {
+      const added = new Date();
+      const username = getUsernameFromLS();
+      const token = getTokenFromCookie(username, 'at');
 
-    if (task.length) {
       const res = await TasksAPI.addTask(
         {
           name: task,
@@ -86,20 +97,18 @@ const TaskModal: FC<IProps> = ({
         token,
       );
 
-      if (res.status === 200) {
-        setSuccess(true);
+      return res;
+    };
 
-        timeoutId.current = setTimeout(() => {
-          setSuccess(null);
-        }, config.ALERT_DELAY);
-      } else {
-        if (res.status === 403) {
-          logout();
-        }
-      }
+    if (task.length && !lock) {
+      push2Queue({
+        name: RequestNameList.addTask,
+        fn: addTask,
+        cb: setAddTaskCB,
+        processOnlyLast: false,
+        identifier: task,
+      });
     }
-
-    updateState({});
   };
 
   const taskHandler = (name: string) => {
@@ -179,6 +188,7 @@ const TaskModal: FC<IProps> = ({
             variant="contained"
             onClick={addTaskHandler}
             sx={{ mb: 2 }}
+            disabled={lock}
           >
             Add
           </LoadingButton>
