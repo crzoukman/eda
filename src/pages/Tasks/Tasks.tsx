@@ -1,17 +1,23 @@
-import { FC, useContext, useState } from "react";
-import { Alert, Button, Divider } from "@mui/material";
+import { FC, useContext } from 'react';
+import { Alert, Button, Divider } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import TaskModal from "components/TaskModal";
-import { ITasks } from "./types";
-import { ButtonsWrapperStyled, TaskHeaderStyled, TasksWrapperStyled, TaskWrapperStyled } from "./Tasks.styled";
-import Task from "components/Task";
+import TaskModal from 'components/TaskModal';
+import { ITasks } from './types';
+import {
+  ButtonsWrapperStyled,
+  TaskHeaderStyled,
+  TasksWrapperStyled,
+  TaskWrapperStyled,
+} from './Tasks.styled';
+import Task from 'components/Task';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import FiltersModal from "components/FiltersModal";
-import useCustomTasks from "./hooks/useCustomTasks";
-import { AppContext } from "App";
+import FiltersModal from 'components/FiltersModal';
+import useCustomTasks from './hooks/useCustomTasks';
+import { AppContext } from 'App';
+import { IAppContext } from 'types';
 
 const Tasks: FC = () => {
-  const { isAuth } = useContext<any>(AppContext);
+  const { isAuth } = useContext(AppContext) as IAppContext;
 
   const [
     setOpen,
@@ -67,30 +73,66 @@ const Tasks: FC = () => {
 
         <TasksWrapperStyled>
           <div>
-            {startedTasks.length > 0 && <Divider>In Progress</Divider>}
+            {startedTasks.length > 0 && (
+              <Divider>In Progress</Divider>
+            )}
             <TaskWrapperStyled>
-              {startedTasks.map((task: ITasks) => <Task {...task} expired={false} updateState={updateState} key={task._id} />)}
+              {startedTasks.map((task: ITasks) => (
+                <Task
+                  {...task}
+                  expired={false}
+                  updateState={updateState}
+                  key={task.id}
+                />
+              ))}
             </TaskWrapperStyled>
           </div>
 
           <div>
-            {plannedTasks.length > 0 && <Divider>Planned</Divider>}
+            {plannedTasks.length > 0 && (
+              <Divider>Planned</Divider>
+            )}
             <TaskWrapperStyled>
-              {plannedTasks.map((task: ITasks) => <Task {...task} expired={false} updateState={updateState} key={task._id} />)}
+              {plannedTasks.map((task: ITasks) => (
+                <Task
+                  {...task}
+                  expired={false}
+                  updateState={updateState}
+                  key={task.id}
+                />
+              ))}
             </TaskWrapperStyled>
           </div>
 
           <div>
-            {completedTasks.length > 0 && <Divider>Completed</Divider>}
+            {completedTasks.length > 0 && (
+              <Divider>Completed</Divider>
+            )}
             <TaskWrapperStyled>
-              {completedTasks.map((task: ITasks) => <Task {...task} expired={false} updateState={updateState} key={task._id} />)}
+              {completedTasks.map((task: ITasks) => (
+                <Task
+                  {...task}
+                  expired={false}
+                  updateState={updateState}
+                  key={task.id}
+                />
+              ))}
             </TaskWrapperStyled>
           </div>
 
           <div>
-            {expiredTasks.length > 0 && <Divider>Expired</Divider>}
+            {expiredTasks.length > 0 && (
+              <Divider>Expired</Divider>
+            )}
             <TaskWrapperStyled>
-              {expiredTasks.map((task: ITasks) => <Task {...task} expired={true} updateState={updateState} key={task._id} />)}
+              {expiredTasks.map((task: ITasks) => (
+                <Task
+                  {...task}
+                  expired={true}
+                  updateState={updateState}
+                  key={task.id}
+                />
+              ))}
             </TaskWrapperStyled>
           </div>
         </TasksWrapperStyled>
@@ -110,9 +152,12 @@ const Tasks: FC = () => {
       </div>
     );
   } else {
-    return <Alert severity="info">You have to login to work with tasks!</Alert>
+    return (
+      <Alert severity="info">
+        You have to login to work with tasks!
+      </Alert>
+    );
   }
-
 };
 
 export default Tasks;

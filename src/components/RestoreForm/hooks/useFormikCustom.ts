@@ -1,53 +1,76 @@
-import Api from "api";
-import { useFormik } from "formik";
-import { useNavigate } from "react-router-dom";
-import { validationSchema } from "../utils/validationSchema";
+import Api from 'api';
+import { config } from 'config';
+import { useFormik } from 'formik';
+import { useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { validationSchema } from '../utils/validationSchema';
 
-export const useFormikCustom = (...args: any) => {
-  const setIsSending = args[0];
-  const setQuestion = args[1];
-  const login = args[2];
-  const setError = args[3];
+interface PropsInterface {
+  setIsSending: (arg: boolean) => void;
+  setError: (arg: boolean | null) => void;
+  setErrorMsg: (arg: string | null) => void;
+  setSuccess: (arg: boolean | null) => void;
+  login: string;
+  email: string;
+}
 
+export const useFormikCustom = ({
+  setIsSending,
+  setError,
+  setErrorMsg,
+  setSuccess,
+  login,
+  email,
+}: PropsInterface) => {
   const navigate = useNavigate();
+
+  const timeout = useRef<null | NodeJS.Timeout>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeout.current) {
+        clearTimeout(timeout.current);
+      }
+    };
+  }, []);
 
   const formik = useFormik({
     initialValues: {
       password: '',
+      passwordConfirmation: '',
       answer: '',
     },
     validationSchema: validationSchema,
     onSubmit: async (values) => {
       const { answer, password } = values;
+
       setIsSending(true);
+      const res = await Api.restorePassword({
+        username: login,
+        email,
+        answer,
+        password,
+      });
 
-      try {
-        const res = await Api.getRestoreData({
-          username: login,
-          answer,
-          password,
-        });
+      setIsSending(false);
 
-        setIsSending(false);
+      if (res.status === 200) {
+        setSuccess(true);
 
-        if (res) {
-          setError(false);
-          setTimeout(() => {
-            navigate('/auth');
-          }, 3000);
-        } else {
-          setError(true);
-        }
-        setTimeout(() => {
+        timeout.current = setTimeout(() => {
+          setSuccess(null);
+          navigate('/auth');
+        }, config.ALERT_DELAY);
+      } else {
+        setError(true);
+        setErrorMsg(res.message);
+
+        timeout.current = setTimeout(() => {
           setError(null);
-        }, 3000);
-      } catch (e) {
-        if (e instanceof Error) {
-          console.error(e.message);
-        }
+        }, config.ALERT_DELAY);
       }
     },
   });
 
   return formik;
-}; 
+};

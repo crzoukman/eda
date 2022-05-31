@@ -1,6 +1,6 @@
 export interface ITasks {
   name: String;
-  date: String;
+  added: Date;
   type: String;
   plannedStart: Date;
   plannedEnd: Date;
@@ -8,5 +8,5 @@ export interface ITasks {
   started: Boolean;
   startedTime: Date;
   endedTime: Date;
-  _id: String;
+  id: String;
 }

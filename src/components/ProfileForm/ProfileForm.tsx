@@ -1,28 +1,177 @@
-import { FC, useState } from "react";
-import { Alert, TextField } from "@mui/material";
+import React, {
+  FC,
+  MutableRefObject,
+  useContext,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
+import { Alert, TextField } from '@mui/material';
 import { LoadingButton } from '@mui/lab';
-import { useFormikCustom } from "./hooks/useFormikCustom";
-import { FormStyled, AlertsWrapperStyled } from "./ProfileForm.styled";
+import {
+  FormStyled,
+  AlertsWrapperStyled,
+} from './ProfileForm.styled';
+import { getTokenFromCookie } from 'utils/getTokenFromCookie';
+import { getUsernameFromLS } from 'utils/getUsernameFromLS';
+import Api from 'api';
+import { config } from 'config';
+import { reducer } from './reducer/reducer';
+import { initialState } from './reducer/initialState';
+import {
+  SetAllAction,
+  SetAnswerAction,
+  SetFirstnameAction,
+  SetLastnameAction,
+  SetPatronymicAction,
+  SetQuestionAction,
+} from './reducer/actions';
+import { AppContext } from 'App';
+import { ApiResponseInterface, IAppContext } from 'types';
+import { RequestNameList } from 'Connect';
 
 const ProfileForm: FC = () => {
   const [isSending, setIsSending] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
-  const formik = useFormikCustom(setIsSending, setShowSuccess, setShowError);
+  const [profileState, dispatch] = useReducer(
+    reducer,
+    initialState,
+  );
+  const [updateProfileCB, setUpdateProfileCB] =
+    useState<null | ApiResponseInterface<any>>(null);
+  const [getProfileDataCB, setGetProfileDataCB] =
+    useState<null | ApiResponseInterface<any>>(null);
+
+  const { push2Queue } = useContext(
+    AppContext,
+  ) as IAppContext;
+
+  const updateProfileTimeout: MutableRefObject<NodeJS.Timeout | null> =
+    useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (updateProfileTimeout.current) {
+        clearTimeout(updateProfileTimeout.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    setIsSending(true);
+
+    const getProfileData = async () => {
+      const username = getUsernameFromLS();
+      const token = getTokenFromCookie(username, 'at');
+
+      const res = await Api.getProfileData(token);
+
+      return res;
+    };
+
+    push2Queue({
+      name: RequestNameList.getProfileData,
+      fn: getProfileData,
+      cb: setGetProfileDataCB,
+      processOnlyLast: true,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (updateProfileCB) {
+      setIsSending(false);
+
+      if (updateProfileCB.status === 200) {
+        dispatch(SetAllAction(updateProfileCB.data));
+
+        if (window.location.pathname === '/profile') {
+          setShowSuccess(true);
+
+          updateProfileTimeout.current = setTimeout(() => {
+            setShowSuccess(false);
+          }, config.ALERT_DELAY);
+        }
+      }
+    }
+
+    if (getProfileDataCB) {
+      setIsSending(false);
+
+      if (getProfileDataCB.status === 200) {
+        dispatch(SetAllAction(getProfileDataCB.data));
+      }
+    }
+  }, [updateProfileCB, getProfileDataCB]);
+
+  async function updateProfile() {
+    const username = getUsernameFromLS();
+    const token = getTokenFromCookie(username, 'at');
+
+    const res = await Api.updateProfile(
+      profileState,
+      token,
+    );
+
+    return res;
+  }
+
+  const formHandler = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    setIsSending(true);
+
+    push2Queue({
+      name: RequestNameList.updateProfile,
+      fn: updateProfile,
+      cb: setUpdateProfileCB,
+      processOnlyLast: true,
+    });
+  };
+
+  const firstnameHandler = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    dispatch(SetFirstnameAction(e.target.value));
+  };
+
+  const lastnameHandler = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    dispatch(SetLastnameAction(e.target.value));
+  };
+
+  const patronymicHandler = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    dispatch(SetPatronymicAction(e.target.value));
+  };
+
+  const questionHandler = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    dispatch(SetQuestionAction(e.target.value));
+  };
+
+  const answerHandler = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    dispatch(SetAnswerAction(e.target.value));
+  };
 
   return (
     <div>
-      <FormStyled onSubmit={formik.handleSubmit}>
+      <FormStyled onSubmit={formHandler}>
         <TextField
           fullWidth
           id="fistname"
           name="firstname"
           label="First Name"
           type="text"
-          value={formik.values.firstname}
-          onChange={formik.handleChange}
-          error={formik.touched.firstname && Boolean(formik.errors.firstname)}
-          helperText={formik.touched.firstname && formik.errors.firstname}
+          value={profileState.firstname}
+          onChange={firstnameHandler}
+          disabled={isSending}
         />
         <TextField
           fullWidth
@@ -30,10 +179,9 @@ const ProfileForm: FC = () => {
           name="lastname"
           label="Last Name"
           type="text"
-          value={formik.values.lastname}
-          onChange={formik.handleChange}
-          error={formik.touched.lastname && Boolean(formik.errors.lastname)}
-          helperText={formik.touched.lastname && formik.errors.lastname}
+          value={profileState.lastname}
+          onChange={lastnameHandler}
+          disabled={isSending}
         />
         <TextField
           fullWidth
@@ -41,10 +189,9 @@ const ProfileForm: FC = () => {
           name="patronymic"
           label="Patronymic"
           type="text"
-          value={formik.values.patronymic}
-          onChange={formik.handleChange}
-          error={formik.touched.patronymic && Boolean(formik.errors.patronymic)}
-          helperText={formik.touched.patronymic && formik.errors.patronymic}
+          value={profileState.patronymic}
+          onChange={patronymicHandler}
+          disabled={isSending}
         />
         <TextField
           fullWidth
@@ -52,10 +199,9 @@ const ProfileForm: FC = () => {
           name="question"
           label="Question"
           type="text"
-          value={formik.values.question}
-          onChange={formik.handleChange}
-          error={formik.touched.question && Boolean(formik.errors.question)}
-          helperText={formik.touched.question && formik.errors.question}
+          value={profileState.question}
+          onChange={questionHandler}
+          disabled={isSending}
         />
         <TextField
           fullWidth
@@ -63,15 +209,15 @@ const ProfileForm: FC = () => {
           name="answer"
           label="Answer"
           type="text"
-          value={formik.values.answer}
-          onChange={formik.handleChange}
-          error={formik.touched.answer && Boolean(formik.errors.answer)}
-          helperText={formik.touched.answer && formik.errors.answer}
+          value={profileState.answer}
+          onChange={answerHandler}
+          disabled={isSending}
         />
         <LoadingButton
           color="primary"
           variant="contained"
-          fullWidth type="submit"
+          fullWidth
+          type="submit"
           loading={isSending}
           disabled={isSending}
         >
@@ -80,10 +226,17 @@ const ProfileForm: FC = () => {
       </FormStyled>
 
       <AlertsWrapperStyled>
-        {showSuccess && <Alert severity="success">User has been updated!</Alert>}
-        {showError && <Alert severity="error">Some error occured!</Alert>}
+        {showSuccess && (
+          <Alert severity="success">
+            User has been updated!
+          </Alert>
+        )}
+        {showError && (
+          <Alert severity="error">
+            Some error occured!
+          </Alert>
+        )}
       </AlertsWrapperStyled>
-
     </div>
   );
 };

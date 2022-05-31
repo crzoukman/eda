@@ -1,13 +1,20 @@
-import { FC, useState } from "react";
-import { IconsWrapperStyled, WrapperStyled } from "./Task.styled";
+import { FC, useContext, useEffect, useState } from 'react';
+import {
+  IconsWrapperStyled,
+  WrapperStyled,
+} from './Task.styled';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import { TasksAPI } from "api/TasksAPI";
-import EditModal from "components/EditModal";
+import { TasksAPI } from 'api/TasksAPI';
+import EditModal from 'components/EditModal';
 import CheckIcon from '@mui/icons-material/Check';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import { getCookie } from "utils/getCookie";
-import { useNavigate } from "react-router-dom";
+import formatDate from './utils/formatDate';
+import { getTokenFromCookie } from 'utils/getTokenFromCookie';
+import { getUsernameFromLS } from 'utils/getUsernameFromLS';
+import { AppContext } from 'App';
+import { ApiResponseInterface, IAppContext } from 'types';
+import { RequestNameList } from 'Connect';
 
 const iconStyles = {
   cursor: 'pointer',
@@ -17,137 +24,168 @@ const iconStyles = {
   '&:hover': {
     background: 'whitesmoke',
     borderRadius: '4px',
-  }
-}
+  },
+};
 
 const Task: FC<any> = (props) => {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<null | boolean>(null);
   const [isBusy, setIsBusy] = useState(false);
-  const navigate = useNavigate();
+  const [startTaskCB, setStartTaskCB] =
+    useState<null | ApiResponseInterface<any>>(null);
+  const [completeTaskCB, setCompleteTaskCB] =
+    useState<null | ApiResponseInterface<any>>(null);
+  const [deleteTaskCB, setDeleteTaskCB] =
+    useState<null | ApiResponseInterface<any>>(null);
 
-  const plannedStart = new Date(props.plannedStart).toISOString().slice(0, 10).split('-').reverse().join('-');
-  const plannedEnd = new Date(props.plannedEnd).toISOString().slice(0, 10).split('-').reverse().join('-');
-  const startedTime = props.startedTime && new Date(props.startedTime).toISOString().slice(0, 10).split('-').reverse().join('-');
-  const startedEnd = props.endedTime && new Date(props.endedTime).toISOString().slice(0, 10).split('-').reverse().join('-');
-  const added = new Date(props.date).toISOString().slice(0, 10).split('-').reverse().join('-');
+  const { logout, push2Queue, lock } = useContext(
+    AppContext,
+  ) as IAppContext;
+
+  const plannedStart = formatDate(props.plannedStart);
+  const plannedEnd = formatDate(props.plannedEnd);
+  const startedTime =
+    props.startedTime && formatDate(props.startedTime);
+  const startedEnd =
+    props.endedTime && formatDate(props.endedTime);
+  const added = formatDate(props.added);
 
   const handleOpen = () => setOpen(true);
   const handleClose = () => setOpen(false);
 
-  const handleStart = async () => {
-    if (!isBusy) {
-      const date = new Date();
-      setIsBusy(true);
-
-      const userData = JSON.parse(localStorage.getItem('userData') as string);
-      const token = getCookie('accessToken' + userData._id);
-
-      const res = await TasksAPI.editTask(
-        {
-          _id: props._id,
-          started: true,
-          completed: false,
-          startedTime: date,
-        },
-        token
-      );
-
-      if (res?.status === 403) {
-        const token = getCookie('accessToken' + userData._id);
-        try {
-          await TasksAPI.editTask(
-            {
-              _id: props._id,
-              started: true,
-              completed: false,
-              startedTime: date,
-            },
-            token
-          );
-
-        } catch (e: any) {
-          console.log(e.message);
-          navigate('/login');
-        }
-      }
-
+  useEffect(() => {
+    if (startTaskCB) {
       setIsBusy(false);
-
       props.updateState({});
+      setStartTaskCB(null);
+    }
+
+    if (completeTaskCB) {
+      setIsBusy(false);
+      props.updateState({});
+      setCompleteTaskCB(null);
+    }
+
+    if (deleteTaskCB) {
+      setIsBusy(false);
+      props.updateState({});
+      setDeleteTaskCB(null);
+    }
+  }, [startTaskCB, completeTaskCB, deleteTaskCB]);
+
+  const handleStart = async () => {
+    if (!isBusy && !lock) {
+      const startTask = async () => {
+        const date = new Date();
+        setIsBusy(true);
+
+        const username = getUsernameFromLS();
+        const token = getTokenFromCookie(username, 'at');
+
+        const res = await TasksAPI.editTask(
+          {
+            id: props.id,
+            started: true,
+            completed: false,
+            startedTime: date,
+          },
+          token,
+        );
+
+        return res;
+      };
+
+      if (!lock) {
+        push2Queue({
+          name: RequestNameList.startTask,
+          fn: startTask,
+          cb: setStartTaskCB,
+          processOnlyLast: false,
+          identifier: RequestNameList.startTask + props.id,
+        });
+      } else {
+        console.log(
+          '[Task.tsx] lock = true. Не могу пушнуть startTask',
+        );
+      }
     }
   };
 
   const handleCompleted = async () => {
-    if (!isBusy) {
-      const date = new Date();
-      setIsBusy(true);
+    if (!isBusy && !lock) {
+      const completeTask = async () => {
+        const date = new Date();
+        setIsBusy(true);
 
-      const userData = JSON.parse(localStorage.getItem('userData') as string);
-      const token = getCookie('accessToken' + userData._id);
+        const username = getUsernameFromLS();
+        const token = getTokenFromCookie(username, 'at');
 
-      const res = await TasksAPI.editTask(
-        {
-          _id: props._id,
-          completed: true,
-          started: false,
-          endedTime: date,
-        },
-        token
-      );
+        const res = await TasksAPI.editTask(
+          {
+            id: props.id,
+            completed: true,
+            started: false,
+            endedTime: date,
+          },
+          token,
+        );
 
-      if (res?.status === 403) {
-        const token = getCookie('accessToken' + userData._id);
-        try {
-          await TasksAPI.editTask(
-            {
-              _id: props._id,
-              completed: true,
-              started: false,
-              endedTime: date,
-            },
-            token
-          );
+        return res;
+      };
 
-        } catch (e: any) {
-          console.log(e.message);
-          navigate('/login');
-        }
+      if (!lock) {
+        push2Queue({
+          name: RequestNameList.completeTask,
+          fn: completeTask,
+          cb: setCompleteTaskCB,
+          processOnlyLast: false,
+          identifier:
+            RequestNameList.completeTask + props.id,
+        });
+      } else {
+        console.log(
+          '[Task.tsx] lock = true. Не могу пушнуть comleteTask',
+        );
       }
-
-      setIsBusy(false);
-
-      props.updateState({});
     }
   };
 
   const handleDelete = async () => {
-    if (!isBusy) {
-      setIsBusy(true);
+    const deleteTask = async () => {
+      if (!isBusy && !lock) {
+        setIsBusy(true);
 
-      const userData = JSON.parse(localStorage.getItem('userData') as string);
-      const token = getCookie('accessToken' + userData._id);
+        const username = getUsernameFromLS();
+        const token = getTokenFromCookie(username, 'at');
 
-      const res = await TasksAPI.deleteTask(props._id, token);
+        const res = await TasksAPI.deleteTask(
+          props.id,
+          token,
+        );
 
-      if (res?.status === 403) {
-        const token = getCookie('accessToken' + userData._id);
-        try {
-          await TasksAPI.deleteTask(props._id, token);
-
-        } catch (e: any) {
-          console.log(e.message);
-          navigate('/login');
-        }
+        return res;
       }
+    };
 
-      setIsBusy(false);
-      props.updateState({});
+    if (!lock) {
+      push2Queue({
+        name: RequestNameList.deleteTask,
+        fn: deleteTask,
+        cb: setDeleteTaskCB,
+        processOnlyLast: false,
+        identifier: RequestNameList.deleteTask + props.id,
+      });
+    } else {
+      console.log(
+        '[Task.tsx] lock = true. Не могу пушнуть deleteTask',
+      );
     }
   };
 
   const handleEdit = () => {
-    handleOpen();
+    if (!isBusy && !lock) {
+      handleOpen();
+    }
   };
 
   return (
@@ -160,42 +198,44 @@ const Task: FC<any> = (props) => {
       <div>{startedTime ? startedTime : '-'}</div>
       <div>{startedEnd ? startedEnd : '-'}</div>
       <IconsWrapperStyled>
-        {!props.started && !props.completed && !props.expired && (
-          <PlayArrowIcon
-            onClick={handleStart}
-            fontSize='large'
-            sx={{
-              color: isBusy ? 'gray' : 'DeepPink',
-              ...iconStyles
-            }}
-          />
-        )}
+        {!props.started &&
+          !props.completed &&
+          !props.expired && (
+            <PlayArrowIcon
+              onClick={handleStart}
+              fontSize="large"
+              sx={{
+                color: isBusy || lock ? 'gray' : 'DeepPink',
+                ...iconStyles,
+              }}
+            />
+          )}
         {!props.completed && props.started && (
           <CheckIcon
             onClick={handleCompleted}
-            fontSize='large'
+            fontSize="large"
             sx={{
-              color: isBusy ? 'gray' : 'green',
-              ...iconStyles
+              color: isBusy || lock ? 'gray' : 'green',
+              ...iconStyles,
             }}
           />
         )}
         {!props.completed && !props.expired && (
           <EditIcon
             onClick={handleEdit}
-            fontSize='large'
+            fontSize="large"
             sx={{
-              color: 'blue',
-              ...iconStyles
+              color: isBusy || lock ? 'gray' : 'blue',
+              ...iconStyles,
             }}
           />
         )}
         <DeleteIcon
           onClick={handleDelete}
-          fontSize='large'
+          fontSize="large"
           sx={{
-            color: isBusy ? 'gray' : 'red',
-            ...iconStyles
+            color: isBusy || lock ? 'gray' : 'red',
+            ...iconStyles,
           }}
         />
       </IconsWrapperStyled>
@@ -206,7 +246,6 @@ const Task: FC<any> = (props) => {
         updateState={props.updateState}
         open={open}
       />
-
     </WrapperStyled>
   );
 };

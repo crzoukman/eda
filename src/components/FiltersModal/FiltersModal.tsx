@@ -1,14 +1,34 @@
-import { DesktopDatePicker, LocalizationProvider } from "@mui/lab";
-import AdapterDateFns from "@mui/lab/AdapterDateFns";
-import { Box, FormControlLabel, FormGroup, MenuItem, Modal, Switch, TextField } from "@mui/material";
-import { FC } from "react";
-import { clearDateBtnStyles, styles, typesConfig } from "./config";
-import { IProps } from "./types";
+import {
+  DesktopDatePicker,
+  LocalizationProvider,
+} from '@mui/lab';
+import AdapterDateFns from '@mui/lab/AdapterDateFns';
+import {
+  Box,
+  FormControlLabel,
+  FormGroup,
+  MenuItem,
+  Modal,
+  Switch,
+  TextField,
+} from '@mui/material';
+import React, { FC } from 'react';
+import {
+  clearDateBtnStyles,
+  styles,
+  typesConfig,
+} from './config';
+import { IProps } from './types';
 import BackspaceIcon from '@mui/icons-material/Backspace';
-import useFilters from "./hooks/useFilters";
-import { DatePickerWrapperStyled } from "./FiltersModal.styled";
+import useFilters from './hooks/useFilters';
+import { DatePickerWrapperStyled } from './FiltersModal.styled';
 
-const FiltersModal: FC<IProps> = ({ showFilters, closeFilters, tasks, setSorted }) => {
+const FiltersModal: FC<IProps> = ({
+  showFilters,
+  closeFilters,
+  tasks,
+  setSorted,
+}) => {
   const [
     plannedStart,
     setPlannedStart,
@@ -44,6 +64,12 @@ const FiltersModal: FC<IProps> = ({ showFilters, closeFilters, tasks, setSorted 
     setEnded(newValue);
   };
 
+  const search = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    setTaskName(e.target.value);
+  };
+
   return (
     <Modal
       open={showFilters}
@@ -55,8 +81,9 @@ const FiltersModal: FC<IProps> = ({ showFilters, closeFilters, tasks, setSorted 
         <TextField
           fullWidth
           label="Task Name"
-          id="taskname" value={taskName}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTaskName(e.target.value)}
+          id="taskname"
+          value={taskName}
+          onChange={search}
           sx={{ mb: 2 }}
         />
 
@@ -65,14 +92,21 @@ const FiltersModal: FC<IProps> = ({ showFilters, closeFilters, tasks, setSorted 
           select
           label="Types"
           value={type}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setType(e.target.value)}
+          onChange={(
+            e: React.ChangeEvent<HTMLInputElement>,
+          ) => setType(e.target.value)}
           sx={{ mb: 2 }}
         >
-          {typesConfig.map((option: { value: string, label: string }) => (
-            <MenuItem key={option.value} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
+          {typesConfig.map(
+            (option: { value: string; label: string }) => (
+              <MenuItem
+                key={option.value}
+                value={option.value}
+              >
+                {option.label}
+              </MenuItem>
+            ),
+          )}
         </TextField>
 
         <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -82,8 +116,12 @@ const FiltersModal: FC<IProps> = ({ showFilters, closeFilters, tasks, setSorted 
                 label="Planned Start Time"
                 inputFormat="dd/MM/yyyy"
                 value={plannedStart}
-                onChange={(e: Date | null) => handlePlannedStart(e)}
-                renderInput={(params) => <TextField {...params} />}
+                onChange={(e: Date | null) =>
+                  handlePlannedStart(e)
+                }
+                renderInput={(params) => (
+                  <TextField {...params} />
+                )}
               />
 
               {plannedStart && (
@@ -99,8 +137,12 @@ const FiltersModal: FC<IProps> = ({ showFilters, closeFilters, tasks, setSorted 
                 label="Planned End Time"
                 inputFormat="dd/MM/yyyy"
                 value={plannedEnd}
-                onChange={(e: Date | null) => handlePlannedEnd(e)}
-                renderInput={(params) => <TextField {...params} />}
+                onChange={(e: Date | null) =>
+                  handlePlannedEnd(e)
+                }
+                renderInput={(params) => (
+                  <TextField {...params} />
+                )}
               />
 
               {plannedEnd && (
@@ -116,8 +158,12 @@ const FiltersModal: FC<IProps> = ({ showFilters, closeFilters, tasks, setSorted 
                 label="Started Time"
                 inputFormat="dd/MM/yyyy"
                 value={started}
-                onChange={(e: Date | null) => handleStarted(e)}
-                renderInput={(params) => <TextField {...params} />}
+                onChange={(e: Date | null) =>
+                  handleStarted(e)
+                }
+                renderInput={(params) => (
+                  <TextField {...params} />
+                )}
               />
 
               {started && (
@@ -133,8 +179,12 @@ const FiltersModal: FC<IProps> = ({ showFilters, closeFilters, tasks, setSorted 
                 label="Ended Time"
                 inputFormat="dd/MM/yyyy"
                 value={ended}
-                onChange={(e: Date | null) => handleEnded(e)}
-                renderInput={(params) => <TextField {...params} />}
+                onChange={(e: Date | null) =>
+                  handleEnded(e)
+                }
+                renderInput={(params) => (
+                  <TextField {...params} />
+                )}
               />
 
               {ended && (
@@ -145,15 +195,18 @@ const FiltersModal: FC<IProps> = ({ showFilters, closeFilters, tasks, setSorted 
               )}
             </div>
           </DatePickerWrapperStyled>
-
         </LocalizationProvider>
 
         <FormGroup sx={{ mt: 2 }}>
           <FormControlLabel
-            control={<Switch
-              checked={completed}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCompleted(e.target.checked)}
-            />}
+            control={
+              <Switch
+                checked={completed}
+                onChange={(
+                  e: React.ChangeEvent<HTMLInputElement>,
+                ) => setCompleted(e.target.checked)}
+              />
+            }
             label="Completed"
           />
         </FormGroup>
