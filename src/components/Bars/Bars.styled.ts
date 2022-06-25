@@ -9,6 +9,7 @@ export const BarsStyled = styled.div`
     rgba(0, 0, 0, 0.3) 0px 1px 3px -1px;
   margin-bottom: 40px;
   overflow: hidden;
+  max-width: 600px;
 `;
 
 export const BarStyled = styled.div<{
