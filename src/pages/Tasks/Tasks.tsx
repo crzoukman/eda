@@ -15,6 +15,7 @@ import FiltersModal from 'components/FiltersModal';
 import useCustomTasks from './hooks/useCustomTasks';
 import { AppContext } from 'App';
 import { IAppContext } from 'types';
+import Bars from 'components/Bars';
 
 const Tasks: FC = () => {
   const { isAuth } = useContext(AppContext) as IAppContext;
@@ -42,6 +43,7 @@ const Tasks: FC = () => {
   if (isAuth) {
     return (
       <div>
+        <Bars tasks={tasks} />
         <ButtonsWrapperStyled>
           <Button
             variant="contained"
