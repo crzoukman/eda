@@ -122,6 +122,11 @@ export class Api {
         },
         {
           signal: controller.signal,
+          headers: {
+            'Access-Control-Allow-Origin':
+              'http://localhost:3000',
+            'Access-Control-Allow-Credentials': 'true',
+          },
         },
       );
 

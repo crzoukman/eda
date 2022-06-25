@@ -1,9 +1,11 @@
-import { FC } from "react";
-import { H1Styled } from "./Home.styled";
+import { FC } from 'react';
+import { H1Styled } from './Home.styled';
 
 const Home: FC = () => {
   return (
-    <H1Styled>React Task Tracker</H1Styled>
+    <>
+      <H1Styled>React Task Tracker</H1Styled>
+    </>
   );
 };
 
