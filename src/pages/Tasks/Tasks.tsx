@@ -43,7 +43,7 @@ const Tasks: FC = () => {
   if (isAuth) {
     return (
       <div>
-        <Bars tasks={tasks} />
+        {/* <Bars tasks={tasks} /> */}
         <ButtonsWrapperStyled>
           <Button
             variant="contained"

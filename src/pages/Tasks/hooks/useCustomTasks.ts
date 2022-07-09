@@ -7,6 +7,8 @@ import { AppContext } from 'App';
 import { ApiResponseInterface, IAppContext } from 'types';
 import formatDate from '../utils/formatDate';
 import { RequestNameList } from 'Connect';
+import { WorkerApi } from 'worker-api';
+import { worker } from 'index';
 
 const useCustomTasks = () => {
   const [open, setOpen] = useState(false);
@@ -38,21 +40,60 @@ const useCustomTasks = () => {
       'userData',
     ) as string;
 
-    const getTasks = async () => {
+    const getTasks = () => {
       const username = getUsernameFromLS();
       const token = getTokenFromCookie(username, 'at');
 
-      const res = await TasksAPI.getTasks(token);
-
-      return res;
+      WorkerApi.getTasks(token);
     };
 
-    if (lsUserData) {
-      push2Queue({
-        name: RequestNameList.getTasks,
-        fn: getTasks,
-        cb: setGetTasksCB,
-        processOnlyLast: true,
+    if (navigator.onLine) {
+      if (lsUserData) {
+        const shouldSync =
+          localStorage.getItem('shouldSync');
+        if (shouldSync) {
+          localStorage.removeItem('shouldSync');
+          const lsTasks = localStorage.getItem('tasks');
+          let savedTasks;
+          if (lsTasks) savedTasks = JSON.parse(lsTasks);
+          if (savedTasks) {
+            const username = getUsernameFromLS();
+            const token = getTokenFromCookie(
+              username,
+              'at',
+            );
+            WorkerApi.setTasks(savedTasks, token);
+          }
+        }
+
+        getTasks();
+
+        worker.port.addEventListener(
+          'message',
+          (message) => {
+            if (message.data.type === 'getTasks') {
+              localStorage.setItem(
+                'tasks',
+                JSON.stringify(message.data.response),
+              );
+
+              setGetTasksCB({
+                status: 200,
+                data: message.data.response,
+              });
+            }
+          },
+        );
+      }
+    } else {
+      localStorage.setItem('shouldSync', 'true');
+      const lsTasks = localStorage.getItem('tasks');
+      let savedTasks;
+      if (lsTasks) savedTasks = JSON.parse(lsTasks);
+
+      setGetTasksCB({
+        status: 200,
+        data: savedTasks,
       });
     }
   }, [update]);

@@ -27,6 +27,8 @@ import { config } from 'config';
 import { AppContext } from 'App';
 import { ApiResponseInterface, IAppContext } from 'types';
 import { RequestNameList } from 'Connect';
+import { WorkerApi } from 'worker-api';
+import { worker } from 'index';
 
 const today = new Date();
 
@@ -95,11 +97,11 @@ const EditModal: FC<any> = (props) => {
       }, config.ALERT_DELAY);
     }
 
-    const editTask = async () => {
+    const editTask = () => {
       const username = getUsernameFromLS();
       const token = getTokenFromCookie(username, 'at');
 
-      const res = await TasksAPI.editTask(
+      WorkerApi.editTask(
         {
           id: props.id,
           name: task,
@@ -110,19 +112,20 @@ const EditModal: FC<any> = (props) => {
         },
         token,
       );
-
-      return res;
     };
+
+    editTask();
 
     if (!lock) {
       if (task.length && !timeError.current) {
-        push2Queue({
-          name: RequestNameList.editTask,
-          fn: editTask,
-          cb: setEditTaskCB,
-          processOnlyLast: false,
-          identifier: RequestNameList.editTask + props.id,
-        });
+        worker.port.addEventListener(
+          'message',
+          (message) => {
+            if (message.data.type === 'editTask') {
+              setEditTaskCB({ status: 200 });
+            }
+          },
+        );
       }
     }
   };

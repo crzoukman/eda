@@ -15,6 +15,8 @@ import { getUsernameFromLS } from 'utils/getUsernameFromLS';
 import { AppContext } from 'App';
 import { ApiResponseInterface, IAppContext } from 'types';
 import { RequestNameList } from 'Connect';
+import { WorkerApi } from 'worker-api';
+import { worker } from 'index';
 
 const iconStyles = {
   cursor: 'pointer',
@@ -73,16 +75,16 @@ const Task: FC<any> = (props) => {
     }
   }, [startTaskCB, completeTaskCB, deleteTaskCB]);
 
-  const handleStart = async () => {
+  const handleStart = () => {
     if (!isBusy && !lock) {
-      const startTask = async () => {
+      const startTask = () => {
         const date = new Date();
         setIsBusy(true);
 
         const username = getUsernameFromLS();
         const token = getTokenFromCookie(username, 'at');
 
-        const res = await TasksAPI.editTask(
+        WorkerApi.editTask(
           {
             id: props.id,
             started: true,
@@ -91,18 +93,19 @@ const Task: FC<any> = (props) => {
           },
           token,
         );
-
-        return res;
       };
 
+      startTask();
+
       if (!lock) {
-        push2Queue({
-          name: RequestNameList.startTask,
-          fn: startTask,
-          cb: setStartTaskCB,
-          processOnlyLast: false,
-          identifier: RequestNameList.startTask + props.id,
-        });
+        worker.port.addEventListener(
+          'message',
+          (message) => {
+            if (message.data.type === 'editTask') {
+              setStartTaskCB({ status: 200 });
+            }
+          },
+        );
       } else {
         console.log(
           '[Task.tsx] lock = true. Не могу пушнуть startTask',
@@ -111,16 +114,16 @@ const Task: FC<any> = (props) => {
     }
   };
 
-  const handleCompleted = async () => {
+  const handleCompleted = () => {
     if (!isBusy && !lock) {
-      const completeTask = async () => {
+      const completeTask = () => {
         const date = new Date();
         setIsBusy(true);
 
         const username = getUsernameFromLS();
         const token = getTokenFromCookie(username, 'at');
 
-        const res = await TasksAPI.editTask(
+        WorkerApi.editTask(
           {
             id: props.id,
             completed: true,
@@ -129,19 +132,19 @@ const Task: FC<any> = (props) => {
           },
           token,
         );
-
-        return res;
       };
 
+      completeTask();
+
       if (!lock) {
-        push2Queue({
-          name: RequestNameList.completeTask,
-          fn: completeTask,
-          cb: setCompleteTaskCB,
-          processOnlyLast: false,
-          identifier:
-            RequestNameList.completeTask + props.id,
-        });
+        worker.port.addEventListener(
+          'message',
+          (message) => {
+            if (message.data.type === 'editTask') {
+              setCompleteTaskCB({ status: 200 });
+            }
+          },
+        );
       } else {
         console.log(
           '[Task.tsx] lock = true. Не могу пушнуть comleteTask',
@@ -150,30 +153,25 @@ const Task: FC<any> = (props) => {
     }
   };
 
-  const handleDelete = async () => {
-    const deleteTask = async () => {
+  const handleDelete = () => {
+    const deleteTask = () => {
       if (!isBusy && !lock) {
         setIsBusy(true);
 
         const username = getUsernameFromLS();
         const token = getTokenFromCookie(username, 'at');
 
-        const res = await TasksAPI.deleteTask(
-          props.id,
-          token,
-        );
-
-        return res;
+        WorkerApi.deleteTask(props.id, token);
       }
     };
 
+    deleteTask();
+
     if (!lock) {
-      push2Queue({
-        name: RequestNameList.deleteTask,
-        fn: deleteTask,
-        cb: setDeleteTaskCB,
-        processOnlyLast: false,
-        identifier: RequestNameList.deleteTask + props.id,
+      worker.port.addEventListener('message', (message) => {
+        if (message.data.type === 'deleteTask') {
+          setDeleteTaskCB({ status: 200 });
+        }
       });
     } else {
       console.log(

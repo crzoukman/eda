@@ -8,10 +8,16 @@ import Container from '@mui/material/Container';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
-import { AccountCircle, Menu as MenuIcon } from "@material-ui/icons";
+import {
+  AccountCircle,
+  Menu as MenuIcon,
+} from '@material-ui/icons';
 import { FC, useContext, useEffect, useState } from 'react';
 import LoginIcon from '@mui/icons-material/Login';
-import { LoginIconStyled, UserAvatarWrapperStyled } from './ResponsiveHeader.styles';
+import {
+  LoginIconStyled,
+  UserAvatarWrapperStyled,
+} from './ResponsiveHeader.styles';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
@@ -20,10 +26,14 @@ import { IAppContext } from 'types';
 import { pages, settings } from './config';
 
 const ResponsiveHeader: FC = () => {
-  const [anchorElNav, setAnchorElNav] = useState<HTMLElement | null>(null);
-  const [anchorElUser, setAnchorElUser] = useState<HTMLElement | null>(null);
+  const [anchorElNav, setAnchorElNav] =
+    useState<HTMLElement | null>(null);
+  const [anchorElUser, setAnchorElUser] =
+    useState<HTMLElement | null>(null);
   const navigate = useNavigate();
-  const { isAuth, setIsAuth } = useContext(AppContext) as IAppContext;
+  const { isAuth, setIsAuth } = useContext(
+    AppContext,
+  ) as IAppContext;
   const [username, setUsername] = useState('');
 
   useEffect(() => {
@@ -34,10 +44,14 @@ const ResponsiveHeader: FC = () => {
     }
   }, []);
 
-  const handleOpenNavMenu = (event: React.MouseEvent<HTMLElement | null>) => {
+  const handleOpenNavMenu = (
+    event: React.MouseEvent<HTMLElement | null>,
+  ) => {
     setAnchorElNav(event.currentTarget);
   };
-  const handleOpenUserMenu = (event: React.MouseEvent<HTMLElement | null>) => {
+  const handleOpenUserMenu = (
+    event: React.MouseEvent<HTMLElement | null>,
+  ) => {
     setAnchorElUser(event.currentTarget);
   };
 
@@ -70,13 +84,21 @@ const ResponsiveHeader: FC = () => {
             variant="h6"
             noWrap
             component="div"
-            sx={{ mr: 2, display: { xs: 'none', md: 'flex' } }}
+            sx={{
+              mr: 2,
+              display: { xs: 'none', md: 'flex' },
+            }}
             style={{ cursor: 'default' }}
           >
             EDA
           </Typography>
 
-          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: { xs: 'flex', md: 'none' },
+            }}
+          >
             <IconButton
               size="large"
               aria-label="account of current user"
@@ -108,7 +130,12 @@ const ResponsiveHeader: FC = () => {
               {pages.map((page) => (
                 <Link to={page[1]} key={uuidv4()}>
                   <MenuItem onClick={handleCloseNavMenu}>
-                    <Typography textAlign="center" style={{ cursor: 'pointer' }}>{page[0]}</Typography>
+                    <Typography
+                      textAlign="center"
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {page[0]}
+                    </Typography>
                   </MenuItem>
                 </Link>
               ))}
@@ -118,31 +145,47 @@ const ResponsiveHeader: FC = () => {
             variant="h6"
             noWrap
             component="div"
-            sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}
+            sx={{
+              flexGrow: 1,
+              display: { xs: 'flex', md: 'none' },
+            }}
             style={{ cursor: 'default' }}
           >
             EDA
           </Typography>
-          <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: { xs: 'none', md: 'flex' },
+            }}
+          >
             {pages.map((page) => (
               <Link to={page[1]} key={uuidv4()}>
                 <Button
                   onClick={handleCloseNavMenu}
-                  sx={{ my: 2, color: 'white', display: 'block' }}
+                  sx={{
+                    my: 2,
+                    color: 'white',
+                    display: 'block',
+                  }}
                 >
                   {page[0]}
-                </Button></Link>
+                </Button>
+              </Link>
             ))}
           </Box>
 
-          {isAuth
-            ? (<UserAvatarWrapperStyled>
-              <div>{username}</div>
+          {isAuth ? (
+            <UserAvatarWrapperStyled>
+              {/* <div>{username}</div> */}
               <Box sx={{ flexGrow: 0 }}>
                 <Tooltip title="Open settings">
-                  <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
+                  <IconButton
+                    onClick={handleOpenUserMenu}
+                    sx={{ p: 0 }}
+                  >
                     <AccountCircle
-                      fontSize='large'
+                      fontSize="large"
                       style={{ color: 'white' }}
                     />
                   </IconButton>
@@ -164,25 +207,33 @@ const ResponsiveHeader: FC = () => {
                   onClose={handleCloseUserMenu}
                 >
                   {settings.map((setting) => (
-                    <MenuItem key={uuidv4()} onClick={() => handleCloseUserMenu(setting)}>
-                      <Typography textAlign="center">{setting}</Typography>
+                    <MenuItem
+                      key={uuidv4()}
+                      onClick={() =>
+                        handleCloseUserMenu(setting)
+                      }
+                    >
+                      <Typography textAlign="center">
+                        {setting}
+                      </Typography>
                     </MenuItem>
                   ))}
                 </Menu>
               </Box>
-            </UserAvatarWrapperStyled>)
-            : (
-              <IconButton aria-label="log in"
-                style={{
-                  color: 'white',
-                }}
-                onClick={loginHandler}
-              >
-                <LoginIconStyled>
-                  <LoginIcon />
-                </LoginIconStyled>
-              </IconButton>
-            )}
+            </UserAvatarWrapperStyled>
+          ) : (
+            <IconButton
+              aria-label="log in"
+              style={{
+                color: 'white',
+              }}
+              onClick={loginHandler}
+            >
+              <LoginIconStyled>
+                <LoginIcon />
+              </LoginIconStyled>
+            </IconButton>
+          )}
         </Toolbar>
       </Container>
     </AppBar>

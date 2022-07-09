@@ -28,6 +28,8 @@ import { AppContext } from 'App';
 import { ApiResponseInterface, IAppContext } from 'types';
 import { RequestNameList } from 'Connect';
 import { config } from 'config';
+import { WorkerApi } from 'worker-api';
+import { worker } from 'index';
 
 const today = new Date();
 
@@ -86,13 +88,13 @@ const TaskModal: FC<IProps> = ({
 
   const typeHandler = (type: string) => setType(type);
 
-  const addTaskHandler = async () => {
-    const addTask = async () => {
+  const addTaskHandler = () => {
+    const addTask = () => {
       const added = new Date();
       const username = getUsernameFromLS();
       const token = getTokenFromCookie(username, 'at');
 
-      const res = await TasksAPI.addTask(
+      WorkerApi.addTask(
         {
           name: task,
           type,
@@ -102,17 +104,15 @@ const TaskModal: FC<IProps> = ({
         },
         token,
       );
-
-      return res;
     };
 
+    addTask();
+
     if (task.length && !lock) {
-      push2Queue({
-        name: RequestNameList.addTask,
-        fn: addTask,
-        cb: setAddTaskCB,
-        processOnlyLast: false,
-        identifier: task,
+      worker.port.addEventListener('message', (message) => {
+        if (message.data.type === 'addTask') {
+          setAddTaskCB({ status: 200 });
+        }
       });
     }
   };

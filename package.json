@@ -19,13 +19,18 @@
     "@types/node": "^16.11.26",
     "@types/react-dom": "^17.0.13",
     "@types/react-router-dom": "^5.3.3",
+    "@types/sharedworker": "^0.0.77",
     "@types/styled-components": "^5.1.24",
     "@types/uuid": "^8.3.4",
     "axios": "^0.26.0",
+    "comlink": "^4.3.1",
+    "crypto-browserify": "^3.12.0",
+    "crypto-js": "^4.1.1",
     "date-fns": "^2.28.0",
     "dayjs": "^1.11.3",
     "formik": "^2.2.9",
     "framer-motion": "^6.3.15",
+    "jsonwebtoken": "^8.5.1",
     "jwt-decode": "^3.1.2",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
@@ -36,6 +41,7 @@
     "uuid": "^8.3.2",
     "validator": "^13.7.0",
     "web-vitals": "^2.1.4",
+    "worker-plugin": "^5.0.1",
     "yup": "^0.32.11"
   },
   "scripts": {
@@ -63,7 +69,9 @@
     ]
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^8.5.8",
     "@types/react": "^17.0.42",
     "@types/validator": "^13.7.2"
   }
+ 
 }

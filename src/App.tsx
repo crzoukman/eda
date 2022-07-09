@@ -12,19 +12,15 @@ import {
   useEffect,
   useState,
 } from 'react';
-import {
-  Route,
-  Routes,
-  useNavigate,
-} from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { IAppContext } from 'types';
 import { getTokenFromCookie } from 'utils/getTokenFromCookie';
 import { MainWrapperStyled } from './App.styled';
 import { Box, Modal } from '@mui/material';
 import Typography from '@mui/material/Typography';
-
 import refreshTokens from 'utils/refreshTokens';
 import { Push2QueueType } from 'Connect';
+import { WorkerApi } from 'worker-api';
 
 const style = {
   position: 'absolute' as 'absolute',
@@ -70,7 +66,8 @@ const App: FC<PropsInterface> = ({
       (async () => {
         const username = JSON.parse(userData).username;
         const token = getTokenFromCookie(username, 'at');
-        const res = await Api.checkUser(token);
+
+        const res = await WorkerApi.checkUser(token);
 
         if (res.status === 200) {
           console.log(

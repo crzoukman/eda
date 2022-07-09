@@ -30,6 +30,8 @@ import {
 import { AppContext } from 'App';
 import { ApiResponseInterface, IAppContext } from 'types';
 import { RequestNameList } from 'Connect';
+import { WorkerApi } from 'worker-api';
+import { worker } from 'index';
 
 const ProfileForm: FC = () => {
   const [isSending, setIsSending] = useState(false);
@@ -66,16 +68,18 @@ const ProfileForm: FC = () => {
       const username = getUsernameFromLS();
       const token = getTokenFromCookie(username, 'at');
 
-      const res = await Api.getProfileData(token);
-
-      return res;
+      WorkerApi.getProfileData(token);
     };
 
-    push2Queue({
-      name: RequestNameList.getProfileData,
-      fn: getProfileData,
-      cb: setGetProfileDataCB,
-      processOnlyLast: true,
+    getProfileData();
+
+    worker.port.addEventListener('message', (message) => {
+      if (message.data.type === 'getProfileData') {
+        setGetProfileDataCB({
+          status: 200,
+          data: message.data.response,
+        });
+      }
     });
   }, []);
 
@@ -113,12 +117,7 @@ const ProfileForm: FC = () => {
     const username = getUsernameFromLS();
     const token = getTokenFromCookie(username, 'at');
 
-    const res = await Api.updateProfile(
-      profileState,
-      token,
-    );
-
-    return res;
+    WorkerApi.updateProfile(profileState, token);
   }
 
   const formHandler = (e: React.FormEvent) => {
@@ -126,12 +125,23 @@ const ProfileForm: FC = () => {
 
     setIsSending(true);
 
-    push2Queue({
-      name: RequestNameList.updateProfile,
-      fn: updateProfile,
-      cb: setUpdateProfileCB,
-      processOnlyLast: true,
+    updateProfile();
+
+    worker.port.addEventListener('message', (message) => {
+      if (message.data.type === 'updateProfile') {
+        setUpdateProfileCB({
+          status: 200,
+          data: message.data.response,
+        });
+      }
     });
+
+    // push2Queue({
+    //   name: RequestNameList.updateProfile,
+    //   fn: updateProfile,
+    //   cb: setUpdateProfileCB,
+    //   processOnlyLast: true,
+    // });
   };
 
   const firstnameHandler = (
