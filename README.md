@@ -1,4 +1,4 @@
-# Task Manager
+# Task Manager (Client)
 
 A fullstack application that was made during going through the course 'Event-Driven Applications' provided by [CSSSR](https://csssr.com/ru) company.
 
