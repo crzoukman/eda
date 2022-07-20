@@ -13,5 +13,5 @@ You're free to create a new user, login, restore a password using question/answe
 
 #### Also is aviable a new version of backend powered by Nestjs, but a new version of frontend isn't ready yet
 
-- GitHub (server): https://github.com/crzoukman/eda-server-nestjs 
+- GitHub (server): https://github.com/crzoukman/eda-server-nestjs
 
