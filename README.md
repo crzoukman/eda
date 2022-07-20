@@ -11,7 +11,7 @@ You're free to create a new user, login, restore a password using question/answe
 - Deploy: https://crzoukman-eda.netlify.app
 - GitHub (server): https://github.com/crzoukman/eda-server-ts
 
-#### Also is aviable a new version of backend powered by Nestjs, but a new frontend isn't ready yet
+#### Also is aviable a new version of backend powered by Nestjs, but a new version of frontend isn't ready yet
 
 - GitHub (server): https://github.com/crzoukman/eda-server-nestjs 
 
